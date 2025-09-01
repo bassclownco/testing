@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+This project is using Next.js 15+ with Typescript, Tailwind CSS, Bun, Drizzle, Neon, Next Auth, Vercel, Vercel Blob, Dropbox API, Stripe, Resend.
+
+Always search for relevent files and information before working.
+
+Keep the code simple, and readable. 
+
+Don't do anything beyond what was explicitly asked for. 
+
+If you have ideas to improve the website, ask permission before implementing them.
