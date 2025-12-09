@@ -4,7 +4,7 @@ import { db, users } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { hashPassword, validatePassword, generatePasswordResetToken } from '@/lib/auth'
 import { successResponse, errorResponse, validationErrorResponse, handleApiError } from '@/lib/api-response'
-import { Resend } from 'resend'
+import { resend } from '@/lib/services-init'
 
 export const dynamic = 'force-dynamic';
 
@@ -25,8 +25,6 @@ const resetPasswordSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"]
 })
-
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 // POST - Request password reset
 export async function POST(request: NextRequest) {

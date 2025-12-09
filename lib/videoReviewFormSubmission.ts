@@ -1,9 +1,7 @@
 "use server";
 
 import { ContactFormValues, VideoReviewFormValues } from "@/lib/types";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { resend } from "@/lib/services-init";
 
 // Create HTML email templates
 

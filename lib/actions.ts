@@ -1,9 +1,7 @@
 "use server";
 
 import { ContactFormValues } from "@/lib/types";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { resend } from "@/lib/services-init";
 
 // Create HTML email templates
 const createAdminEmailHTML = (data: ContactFormValues) => `

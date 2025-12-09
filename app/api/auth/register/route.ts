@@ -4,7 +4,7 @@ import { db, users } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { hashPassword, validateEmail, validatePassword, generateEmailVerificationToken } from '@/lib/auth'
 import { successResponse, errorResponse, validationErrorResponse, handleApiError } from '@/lib/api-response'
-import { Resend } from 'resend'
+import { resend } from '@/lib/services-init'
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(255, 'Name is too long'),
@@ -15,8 +15,6 @@ const registerSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"]
 })
-
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export const dynamic = 'force-dynamic';
 
