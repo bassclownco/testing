@@ -93,7 +93,7 @@ export default function UserDetailsPage() {
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-xl font-bold">
-                  {user.name.split(' ').map(n => n[0]).join('')}
+                  {user.name ? user.name.split(' ').map((n: string) => n[0]).join('') : user.email[0].toUpperCase()}
                 </span>
               </div>
               <div>
