@@ -1,3 +1,6 @@
+// Import drizzle-build-patch FIRST to ensure JSON.parse is patched before any other code runs
+import '@/lib/drizzle-build-patch';
+
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
