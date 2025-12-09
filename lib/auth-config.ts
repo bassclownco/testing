@@ -56,6 +56,12 @@ export const authOptions: NextAuthOptions = {
         const { email, password } = validatedFields.data
 
         try {
+          // Check if database is available
+          if (!db) {
+            console.error('Database not available during authentication')
+            return null
+          }
+
           // Find user in database
           const [user] = await db
             .select()

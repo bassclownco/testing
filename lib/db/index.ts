@@ -20,15 +20,16 @@ const isBuildTime =
 // This will print during `next build` as well as during `next dev`, giving us
 // quick feedback in the terminal without affecting runtime behaviour.
 // ---------------------------------------------------------------------------
-let db: ReturnType<typeof drizzle>
+let db: ReturnType<typeof drizzle> | null = null
 
 if (!isBuildTime && databaseUrl) {
-  const sql = neon(databaseUrl)
-  db = drizzle(sql, { schema })
-} else {
-  // Provide a typed stub during build to satisfy imports. Runtime code should
-  // guard with `if (!db)` before using the database.
-  db = undefined as unknown as ReturnType<typeof drizzle>
+  try {
+    const sql = neon(databaseUrl)
+    db = drizzle(sql, { schema })
+  } catch (error) {
+    console.error('Failed to initialize database:', error)
+    db = null
+  }
 }
 
 export { db }
