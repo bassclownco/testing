@@ -28,17 +28,20 @@ const originalJSONParse = JSON.parse;
 
 // Replace JSON.parse with our patched version
 // @ts-ignore - We're intentionally monkey-patching here
-JSON.parse = function patchedJSONParse(text: string, ...rest: any[]): any {
+JSON.parse = function patchedJSONParse(text: any, ...rest: any[]): any {
+  // Handle null or undefined values first
+  if (text === null || text === undefined) {
+    return null;
+  }
+  
+  // Convert to string to check for "undefined" string
+  const textStr = String(text);
+  
   // Handle the case where text is literally the string "undefined"
-  if (text === 'undefined') {
+  if (textStr === 'undefined' || textStr.trim() === 'undefined') {
     const mode = isBuildTime ? 'build' : 'runtime';
     console.warn(`[drizzle-build-patch] Intercepted JSON.parse("undefined") during ${mode}, returning empty object`);
     return {};
-  }
-  
-  // Handle null or undefined values
-  if (text === null || text === undefined) {
-    return null;
   }
 
   // For all other cases, use the original function
@@ -47,7 +50,7 @@ JSON.parse = function patchedJSONParse(text: string, ...rest: any[]): any {
   } catch (error) {
     // Be forgiving with JSON parse errors in all environments
     const mode = isBuildTime ? 'build' : 'runtime';
-    console.warn(`[drizzle-build-patch] JSON.parse error during ${mode}: ${error}. Returning empty object for: ${text}`);
+    console.warn(`[drizzle-build-patch] JSON.parse error during ${mode}: ${error}. Returning empty object for: ${textStr.substring(0, 100)}`);
     return {};
   }
 };

@@ -1,3 +1,6 @@
+// Import drizzle-build-patch FIRST to ensure JSON.parse is patched
+import "./drizzle-build-patch"
+
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { z } from "zod"
@@ -108,6 +111,4 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
-  // Add NEXTAUTH_URL for proper session handling in production
-  ...(process.env.NEXTAUTH_URL && { url: process.env.NEXTAUTH_URL }),
 } 
