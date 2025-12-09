@@ -3,6 +3,8 @@ import { w9Forms, w9FormSubmissions, w9FormVerifications, w9FormNotifications, u
 import { eq, and, gte, lte, desc, asc } from 'drizzle-orm';
 import { EmailService } from '@/lib/email-service';
 import crypto from 'crypto';
+import puppeteer from 'puppeteer';
+import { put } from '@vercel/blob';
 
 export interface W9FormData {
   // Business information
@@ -493,10 +495,23 @@ export class W9FormService {
   // Decrypt form data for processing
   private decryptFormData(form: any): W9FormData {
     try {
-      return {
-        ...form,
-        taxIdNumber: this.decrypt(form.taxIdNumber)
+      const decrypted: W9FormData = {
+        businessName: form.businessName || undefined,
+        businessType: (form.businessType as any) || 'individual',
+        taxClassification: form.taxClassification || undefined,
+        payeeName: form.payeeName || '',
+        address: form.address || '',
+        city: form.city || '',
+        state: form.state || '',
+        zipCode: form.zipCode || '',
+        tinType: (form.tinType as 'ssn' | 'ein') || 'ssn',
+        taxIdNumber: form.taxIdNumber ? this.decrypt(form.taxIdNumber) : '',
+        isSubjectToBackupWithholding: form.isSubjectToBackupWithholding || false,
+        backupWithholdingReason: form.backupWithholdingReason || undefined,
+        isCertified: form.isCertified || false,
+        signature: form.signature || undefined
       };
+      return decrypted;
     } catch (error) {
       console.error('Error decrypting form data:', error);
       throw new Error('Failed to decrypt form data');
@@ -742,21 +757,398 @@ export class W9FormService {
     submissionsRequiring1099: number;
   }> {
     try {
+      const allForms = await db.select().from(w9Forms);
+      const allSubmissions = await db.select().from(w9FormSubmissions);
+
       const stats = {
-        totalForms: 0,
-        submittedForms: 0,
-        approvedForms: 0,
-        rejectedForms: 0,
-        expiredForms: 0,
-        pendingReview: 0,
-        submissionsRequiring1099: 0
+        totalForms: allForms.length,
+        submittedForms: allForms.filter(f => f.status === 'submitted').length,
+        approvedForms: allForms.filter(f => f.status === 'approved').length,
+        rejectedForms: allForms.filter(f => f.status === 'rejected').length,
+        expiredForms: allForms.filter(f => f.status === 'expired').length,
+        pendingReview: allForms.filter(f => f.status === 'submitted').length,
+        submissionsRequiring1099: allSubmissions.filter(s => s.needsReporting && !s.form1099Sent).length
       };
 
-      // This would be implemented with proper aggregation queries
-      // For now, returning empty stats
       return stats;
     } catch (error) {
       console.error('Error getting W9 statistics:', error);
+      throw error;
+    }
+  }
+
+  // Generate PDF from W9 form data
+  async generatePDF(w9FormId: string): Promise<string> {
+    try {
+      const form = await this.getW9FormById(w9FormId);
+      if (!form) {
+        throw new Error('W9 form not found');
+      }
+
+      // Decrypt form data for PDF generation
+      const formData = this.decryptFormData(form);
+
+      // Generate HTML content for W9 form
+      const htmlContent = this.generateW9FormHTML(formData, form);
+
+      // Generate PDF using Puppeteer
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+      
+      const pdfBuffer = await page.pdf({
+        format: 'Letter',
+        printBackground: true,
+        margin: {
+          top: '0.5in',
+          right: '0.5in',
+          bottom: '0.5in',
+          left: '0.5in'
+        }
+      });
+
+      await browser.close();
+
+      // Upload PDF to Vercel Blob
+      const timestamp = Date.now();
+      const filename = `w9-forms/${form.userId}/${timestamp}_w9-form-${w9FormId}.pdf`;
+      
+      const blob = await put(filename, pdfBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'application/pdf'
+      });
+
+      // Update form with PDF URL
+      await db
+        .update(w9Forms)
+        .set({
+          formFileUrl: blob.url,
+          updatedAt: new Date()
+        })
+        .where(eq(w9Forms.id, w9FormId));
+
+      return blob.url;
+    } catch (error) {
+      console.error('Error generating W9 PDF:', error);
+      throw error;
+    }
+  }
+
+  // Generate HTML content for W9 form
+  private generateW9FormHTML(formData: W9FormData, form: any): string {
+    // Mask TIN for display (show only last 4 digits)
+    const maskedTIN = formData.taxIdNumber ? 
+      '***-**-' + formData.taxIdNumber.slice(-4) : '';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Form W-9</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.4;
+      margin: 0;
+      padding: 20px;
+      color: #000;
+    }
+    .form-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .form-title {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .form-subtitle {
+      font-size: 10pt;
+      margin-bottom: 15px;
+    }
+    .section {
+      margin-bottom: 15px;
+      border: 1px solid #000;
+      padding: 10px;
+    }
+    .section-title {
+      font-weight: bold;
+      font-size: 12pt;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #000;
+      padding-bottom: 5px;
+    }
+    .field-group {
+      margin-bottom: 12px;
+    }
+    .field-label {
+      font-weight: bold;
+      margin-bottom: 3px;
+      display: block;
+    }
+    .field-value {
+      border-bottom: 1px solid #000;
+      min-height: 20px;
+      padding: 2px 5px;
+    }
+    .checkbox-group {
+      margin: 8px 0;
+    }
+    .checkbox {
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      border: 1px solid #000;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .checked {
+      background-color: #000;
+    }
+    .signature-section {
+      margin-top: 30px;
+      border-top: 2px solid #000;
+      padding-top: 15px;
+    }
+    .signature-line {
+      border-bottom: 1px solid #000;
+      width: 300px;
+      margin: 20px 0 5px 0;
+      min-height: 30px;
+    }
+    .signature-label {
+      font-size: 9pt;
+      color: #666;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 9pt;
+      color: #666;
+      text-align: center;
+    }
+    .two-column {
+      display: flex;
+      gap: 20px;
+    }
+    .column {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-header">
+    <div class="form-title">Form W-9</div>
+    <div class="form-subtitle">Request for Taxpayer Identification Number and Certification</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Part I: Taxpayer Identification Number (TIN)</div>
+    
+    <div class="field-group">
+      <span class="field-label">Name (as shown on your income tax return):</span>
+      <div class="field-value">${formData.payeeName || ''}</div>
+    </div>
+
+    ${formData.businessName ? `
+    <div class="field-group">
+      <span class="field-label">Business name/disregarded entity name, if different from above:</span>
+      <div class="field-value">${formData.businessName}</div>
+    </div>
+    ` : ''}
+
+    <div class="field-group">
+      <span class="field-label">Check appropriate box:</span>
+      <div class="checkbox-group">
+        <span class="checkbox ${formData.businessType === 'individual' || formData.businessType === 'sole_proprietor' ? 'checked' : ''}"></span>
+        <span>Individual/sole proprietor or single-member LLC</span>
+      </div>
+      <div class="checkbox-group">
+        <span class="checkbox ${formData.businessType === 'corporation' ? 'checked' : ''}"></span>
+        <span>C Corporation</span>
+      </div>
+      <div class="checkbox-group">
+        <span class="checkbox ${formData.businessType === 's_corp' ? 'checked' : ''}"></span>
+        <span>S Corporation</span>
+      </div>
+      <div class="checkbox-group">
+        <span class="checkbox ${formData.businessType === 'partnership' ? 'checked' : ''}"></span>
+        <span>Partnership</span>
+      </div>
+      <div class="checkbox-group">
+        <span class="checkbox ${formData.businessType === 'trust' || formData.businessType === 'estate' ? 'checked' : ''}"></span>
+        <span>Trust/estate</span>
+      </div>
+      <div class="checkbox-group">
+        <span class="checkbox ${formData.businessType === 'llc' ? 'checked' : ''}"></span>
+        <span>Limited liability company</span>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <span class="field-label">Taxpayer Identification Number:</span>
+      <div class="field-value">${maskedTIN}</div>
+      <div style="font-size: 9pt; margin-top: 5px;">
+        ${formData.tinType === 'ssn' ? '☑' : '☐'} SSN &nbsp;&nbsp;
+        ${formData.tinType === 'ein' ? '☑' : '☐'} EIN
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Part II: Certification</div>
+    <p>Under penalties of perjury, I certify that:</p>
+    <ol>
+      <li>The number shown on this form is my correct taxpayer identification number (or I am waiting for a number to be issued to me), and</li>
+      <li>I am not subject to backup withholding because: (a) I am exempt from backup withholding, or (b) I have not been notified by the Internal Revenue Service (IRS) that I am subject to backup withholding as a result of a failure to report all interest or dividends, or (c) the IRS has notified me that I am no longer subject to backup withholding, and</li>
+      <li>I am a U.S. person (including a U.S. resident alien), and</li>
+      <li>The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct.</li>
+    </ol>
+    
+    <div class="checkbox-group" style="margin-top: 15px;">
+      <span class="checkbox ${formData.isCertified ? 'checked' : ''}"></span>
+      <span><strong>I certify that the information provided is true, correct, and complete.</strong></span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Part III: Address</div>
+    <div class="field-group">
+      <span class="field-label">Street address (or P.O. box if mail is not delivered to street address):</span>
+      <div class="field-value">${formData.address || ''}</div>
+    </div>
+    <div class="two-column">
+      <div class="column">
+        <div class="field-group">
+          <span class="field-label">City, state, and ZIP code:</span>
+          <div class="field-value">${formData.city || ''}, ${formData.state || ''} ${formData.zipCode || ''}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  ${formData.isSubjectToBackupWithholding ? `
+  <div class="section">
+    <div class="section-title">Part IV: Exemptions</div>
+    <div class="field-group">
+      <span class="field-label">Exempt payee code (if any):</span>
+      <div class="field-value">${formData.exemptPayeeCode || 'N/A'}</div>
+    </div>
+    <div class="field-group">
+      <span class="field-label">Exemption from FATCA reporting code (if any):</span>
+      <div class="field-value">${formData.exemptFromFatca ? 'Yes' : 'No'}</div>
+    </div>
+  </div>
+  ` : ''}
+
+  <div class="signature-section">
+    <div class="field-group">
+      <div class="signature-line"></div>
+      <div class="signature-label">Signature of U.S. person</div>
+    </div>
+    <div class="field-group" style="margin-top: 15px;">
+      <span class="field-label">Date:</span>
+      <div class="field-value" style="width: 150px; display: inline-block;">
+        ${form.certificationDate ? new Date(form.certificationDate).toLocaleDateString() : ''}
+      </div>
+    </div>
+    ${formData.signatureName ? `
+    <div class="field-group">
+      <span class="field-label">Print name:</span>
+      <div class="field-value">${formData.signatureName}</div>
+    </div>
+    ` : ''}
+  </div>
+
+  <div class="footer">
+    <p>This form was generated by Bass Clown Co on ${new Date().toLocaleDateString()}</p>
+    <p>Form ID: ${form.id}</p>
+  </div>
+</body>
+</html>
+    `;
+  }
+
+  // Check if user needs W9 form before payout (for integration with payout workflow)
+  async checkW9RequirementForPayout(
+    userId: string,
+    prizeValue: number,
+    contextType: 'contest' | 'giveaway',
+    contextId?: string
+  ): Promise<{ required: boolean; hasValidForm: boolean; formId?: string; message: string }> {
+    try {
+      // W9 is required for prizes >= $600
+      const required = prizeValue >= 600;
+      
+      if (!required) {
+        return {
+          required: false,
+          hasValidForm: false,
+          message: 'W9 form not required for prizes under $600'
+        };
+      }
+
+      // Check if user has a valid W9 form
+      const validForm = await this.getValidW9Form(userId);
+      
+      if (validForm) {
+        return {
+          required: true,
+          hasValidForm: true,
+          formId: validForm.id,
+          message: 'User has valid W9 form on file'
+        };
+      }
+
+      return {
+        required: true,
+        hasValidForm: false,
+        message: 'W9 form is required for prizes valued at $600 or more. Please submit a W9 form before payout can be processed.'
+      };
+    } catch (error) {
+      console.error('Error checking W9 requirement for payout:', error);
+      throw error;
+    }
+  }
+
+  // Get full form details for admin (with decrypted data)
+  async getW9FormDetailsForAdmin(w9FormId: string): Promise<any> {
+    try {
+      const form = await this.getW9FormById(w9FormId);
+      if (!form) {
+        throw new Error('W9 form not found');
+      }
+
+      // Get user details
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, form.userId))
+        .limit(1);
+
+      // Decrypt sensitive data for admin view
+      const formData = this.decryptFormData(form);
+
+      return {
+        ...form,
+        user: user ? {
+          id: user.id,
+          name: user.name,
+          email: user.email
+        } : null,
+        formData: {
+          ...formData,
+          taxIdNumber: formData.taxIdNumber // Show full TIN to admin
+        }
+      };
+    } catch (error) {
+      console.error('Error getting W9 form details:', error);
       throw error;
     }
   }

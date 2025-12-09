@@ -1,12 +1,26 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Download, FileText, TrendingUp, Users, Trophy, DollarSign, Calendar } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { BarChart, Download, FileText, TrendingUp, Users, Trophy, DollarSign, Calendar, Loader2 } from 'lucide-react';
 
 export default function ReportsPanel() {
+  const { toast } = useToast();
+  const [generating, setGenerating] = useState<string | null>(null);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [selectedReportType, setSelectedReportType] = useState<string>('');
+  const [reportFormat, setReportFormat] = useState<'pdf' | 'csv'>('pdf');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
   const reportTypes = [
     {
       id: 'user-activity',
@@ -152,7 +166,14 @@ export default function ReportsPanel() {
                       </CardHeader>
                       <CardContent className="pt-0">
                         <p className="text-sm text-gray-600 mb-4">{report.description}</p>
-                        <Button className="w-full" variant="outline">
+                        <Button 
+                          className="w-full" 
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedReportType(report.id);
+                            setGenerateDialogOpen(true);
+                          }}
+                        >
                           <BarChart className="h-4 w-4 mr-2" />
                           Generate Report
                         </Button>
@@ -204,6 +225,125 @@ export default function ReportsPanel() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Generate Report Dialog */}
+      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Report</DialogTitle>
+            <DialogDescription>
+              Configure and generate your report
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="format">Format</Label>
+              <Select value={reportFormat} onValueChange={(value: 'pdf' | 'csv') => setReportFormat(value)}>
+                <SelectTrigger id="format">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pdf">PDF</SelectItem>
+                  <SelectItem value="csv">CSV</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="startDate">Start Date (Optional)</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="endDate">End Date (Optional)</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setGenerateDialogOpen(false)}
+              disabled={generating !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!selectedReportType) return;
+                
+                try {
+                  setGenerating(selectedReportType);
+                  
+                  const response = await fetch('/api/admin/reports/generate', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                      reportType: selectedReportType === 'user-activity' ? 'user' :
+                                  selectedReportType === 'contest-performance' ? 'contest' :
+                                  selectedReportType === 'revenue-analysis' ? 'platform' :
+                                  'admin',
+                      format: reportFormat,
+                      startDate: startDate || undefined,
+                      endDate: endDate || undefined
+                    }),
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Failed to generate report');
+                  }
+
+                  const result = await response.json();
+                  
+                  if (result.success && result.data?.report?.url) {
+                    toast({
+                      title: "Success",
+                      description: "Report generated successfully",
+                    });
+                    // Open report in new tab
+                    window.open(result.data.report.url, '_blank');
+                    setGenerateDialogOpen(false);
+                  } else {
+                    throw new Error(result.message || 'Failed to generate report');
+                  }
+                } catch (err) {
+                  console.error('Error generating report:', err);
+                  toast({
+                    title: "Error",
+                    description: err instanceof Error ? err.message : 'Failed to generate report',
+                    variant: "destructive",
+                  });
+                } finally {
+                  setGenerating(null);
+                }
+              }}
+              disabled={generating !== null}
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Generate & Download
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

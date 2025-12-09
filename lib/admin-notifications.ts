@@ -163,9 +163,17 @@ export class AdminNotificationService {
 
     const notification = await this.generateNotificationContent(type, data, customMessage);
     
-    // Store notification in database
-    const result = await db.insert(notifications).values({
-      userId: 'system', // System notifications
+    // Get all admin users to notify
+    const adminUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, 'bass-admin'));
+
+    const recipientIds = rule.recipients.length > 0 ? rule.recipients : adminUsers.map(u => u.id);
+
+    // Create notification for each admin user
+    const notificationRecords = recipientIds.map(userId => ({
+      userId,
       type: type,
       title: notification.title,
       message: notification.message,
@@ -174,19 +182,20 @@ export class AdminNotificationService {
         actionRequired: notification.actionRequired,
         actionUrl: notification.actionUrl,
         data
-      }
-    }).returning({ id: notifications.id });
+      },
+      read: false
+    }));
 
-    const notificationId = result[0].id;
+    const results = await db
+      .insert(notifications)
+      .values(notificationRecords)
+      .returning({ id: notifications.id });
+
+    const notificationId = results[0]?.id || '';
 
     // Send email notifications if enabled
-    if (rule.emailEnabled && rule.recipients.length > 0) {
-      await this.sendEmailNotifications(rule.recipients, notification);
-    }
-
-    // Send to all bass-admin users if no specific recipients
-    if (rule.recipients.length === 0) {
-      await this.notifyAllAdmins(notification);
+    if (rule.emailEnabled && recipientIds.length > 0) {
+      await this.sendEmailNotifications(recipientIds, notification);
     }
 
     return notificationId;
@@ -356,7 +365,7 @@ export class AdminNotificationService {
       limit?: number;
     } = {}
   ): Promise<any[]> {
-    let conditions = [eq(notifications.userId, userId)];
+    let conditions: any[] = [eq(notifications.userId, userId)];
 
     if (filters.unreadOnly) {
       conditions.push(eq(notifications.read, false));
@@ -373,7 +382,24 @@ export class AdminNotificationService {
       .orderBy(desc(notifications.createdAt))
       .limit(filters.limit || 50);
 
-    return results;
+    // Filter by priority from metadata if specified
+    let filteredResults = results;
+    if (filters.priority) {
+      filteredResults = results.filter((notification: any) => {
+        const metadata = notification.metadata as any;
+        return metadata?.priority === filters.priority;
+      });
+    }
+
+    return filteredResults.map((notification: any) => ({
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      metadata: notification.metadata || {},
+      read: notification.read || false,
+      createdAt: notification.createdAt
+    }));
   }
 
   // Mark notification as read
@@ -552,7 +578,7 @@ export class AdminNotificationService {
       .from(notifications)
       .where(eq(notifications.userId, userId));
 
-    const unread = allNotifications.filter((n: any) => !n.read).length;
+    const unread = allNotifications.filter((n: any) => !(n.read === true)).length;
     
     const byPriority: Record<string, number> = {};
     const byType: Record<string, number> = {};

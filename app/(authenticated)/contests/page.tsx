@@ -8,152 +8,103 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 import ContestCard from '@/components/contests/ContestCard';
-import { Search, Filter, Trophy, Calendar, Users, DollarSign, Tag, ArrowRight } from 'lucide-react';
+import { Search, Filter, Trophy, Calendar, Users, DollarSign, Tag, ArrowRight, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 
-// Mock data - In a real app, this would come from an API
-const mockContests: Contest[] = [
-  {
-    id: '1',
-    title: 'Best Bass Fishing Video 2024',
-    description: 'Show us your best bass fishing skills in this exciting video contest. Submit your most impressive catch, technique demonstration, or fishing adventure. Winner gets premium fishing gear and equipment worth $2,000!',
-    shortDescription: 'Submit your best bass fishing video for a chance to win premium fishing gear worth $2,000',
-    image: '/images/video-review-thumb-1.jpg',
-    prize: '$2,000 in Fishing Gear',
-    startDate: '2024-01-01',
-    endDate: '2024-03-31',
-    applicationDeadline: '2024-02-15',
-    submissionDeadline: '2024-03-15',
-    status: 'open',
-    category: 'Video Production',
-    requirements: [
-      'Original video content only',
-      'Minimum 2 minutes, maximum 10 minutes',
-      'High definition (1080p or higher)',
-      'Include brief description of technique or location',
-      'Must demonstrate bass fishing skills'
-    ],
-    judges: ['John Fisher', 'Sarah Bass', 'Mike Angler'],
-    maxParticipants: 100,
-    currentParticipants: 45,
-    rules: 'All content must be original and shot within the contest period. No copyrighted music without permission. Submissions will be judged on technique, creativity, and video quality.',
-    submissionGuidelines: 'Upload your video in MP4 format, maximum 500MB. Include title, description, and location if applicable. Ensure video quality is HD (1080p minimum).',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '2',
-    title: 'Photography Contest: Fishing Moments',
-    description: 'Capture the perfect fishing moment in this photography contest. Whether it\'s the excitement of a catch, the beauty of a sunrise over water, or the concentration of an angler, show us your best fishing photography.',
-    shortDescription: 'Capture the perfect fishing moment and win professional photography equipment',
-    image: '/images/assets/bass-taking-picture.svg',
-    prize: '$1,500 Photography Equipment',
-    startDate: '2024-02-01',
-    endDate: '2024-04-30',
-    applicationDeadline: '2024-03-01',
-    submissionDeadline: '2024-04-15',
-    status: 'open',
-    category: 'Photography',
-    requirements: [
-      'Original photography only',
-      'Fishing-related subject matter',
-      'High resolution (minimum 300 DPI)',
-      'Submit up to 3 images',
-      'Include brief story behind the photo'
-    ],
-    judges: ['Emma Photo', 'David Lens', 'Lisa Capture'],
-    maxParticipants: 75,
-    currentParticipants: 23,
-    rules: 'Photos must be taken during the contest period. Basic editing is allowed but no heavy manipulation. RAW files may be requested for verification.',
-    submissionGuidelines: 'Submit high-resolution JPEG files, maximum 20MB each. Include title, description, and camera settings if available.',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-02-01T00:00:00Z',
-    updatedAt: '2024-02-01T00:00:00Z'
-  },
-  {
-    id: '3',
-    title: 'Fishing Tutorial Challenge',
-    description: 'Create an educational fishing tutorial that teaches others a specific technique, knot, or skill. Help grow the fishing community by sharing your knowledge and expertise.',
-    shortDescription: 'Create educational fishing content and win cash prizes',
-    image: '/images/assets/bass-fish-illustration.svg',
-    prize: '$1,000 Cash Prize',
-    startDate: '2024-03-01',
-    endDate: '2024-05-31',
-    applicationDeadline: '2024-04-01',
-    submissionDeadline: '2024-05-15',
-    status: 'open',
-    category: 'Education',
-    requirements: [
-      'Educational content focus',
-      'Clear instruction and demonstration',
-      'Original content only',
-      'Include step-by-step explanation',
-      'Family-friendly content'
-    ],
-    judges: ['Tom Teach', 'Rachel Guide', 'Steve Mentor'],
-    maxParticipants: 50,
-    currentParticipants: 12,
-    rules: 'Content must be instructional and family-friendly. Citations required for any referenced techniques or methods.',
-    submissionGuidelines: 'Submit video tutorials in MP4 format or written guides in PDF format. Include detailed instructions and any necessary diagrams.',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-03-01T00:00:00Z',
-    updatedAt: '2024-03-01T00:00:00Z'
-  },
-  {
-    id: '4',
-    title: 'Biggest Fish Story Contest',
-    description: 'Share your most memorable fishing story! Whether it\'s the one that got away, your first catch, or an epic adventure, we want to hear it. The best story wins amazing prizes.',
-    shortDescription: 'Share your best fishing story and win gift cards',
-    image: '/images/assets/bass-clown-co-fish-chase.png',
-    prize: '$500 Gift Card',
-    startDate: '2024-01-15',
-    endDate: '2024-12-31',
-    applicationDeadline: '2024-12-01',
-    submissionDeadline: '2024-12-15',
-    status: 'open',
-    category: 'Storytelling',
-    requirements: [
-      'Original story only',
-      'Fishing-related content',
-      'Maximum 1,000 words',
-      'Family-friendly content',
-      'Include photos if available'
-    ],
-    judges: ['Bill Story', 'Anna Tale', 'Mark Narrative'],
-    maxParticipants: 200,
-    currentParticipants: 89,
-    rules: 'Stories must be original and true. Basic editing for grammar and clarity is allowed.',
-    submissionGuidelines: 'Submit stories in text format through the submission form. Include supporting photos if available.',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-01-15T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z'
-  }
-];
-
-const mockCategories: ContestCategory[] = [
-  { id: '1', name: 'Video Production', description: 'Video contests and challenges', icon: 'video' },
-  { id: '2', name: 'Photography', description: 'Photo contests and challenges', icon: 'camera' },
-  { id: '3', name: 'Education', description: 'Educational content contests', icon: 'book' },
-  { id: '4', name: 'Storytelling', description: 'Written content and stories', icon: 'pen' },
-];
-
 export default function ContestsPage() {
-  const [contests, setContests] = useState<Contest[]>(mockContests);
-  const [filteredContests, setFilteredContests] = useState<Contest[]>(mockContests);
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [filteredContests, setFilteredContests] = useState<Contest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Fetch contests from API
+  useEffect(() => {
+    fetchContests();
+  }, []);
+
+  const fetchContests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch all contests (using a large limit to get all)
+      const response = await fetch('/api/contests?limit=100', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch contests: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data?.contests) {
+        // Transform API data to match Contest type
+        const transformedContests: Contest[] = result.data.contests.map((contest: any) => ({
+          id: contest.id,
+          title: contest.title,
+          description: contest.description || '',
+          shortDescription: contest.shortDescription || contest.description?.substring(0, 100) || '',
+          image: contest.image || '/images/assets/bass-clown-co-fish-chase.png',
+          prize: contest.prize || 'Prize TBD',
+          startDate: contest.startDate ? new Date(contest.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          endDate: contest.endDate ? new Date(contest.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          applicationDeadline: contest.applicationDeadline ? new Date(contest.applicationDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          submissionDeadline: contest.submissionDeadline ? new Date(contest.submissionDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          status: contest.status || 'open',
+          category: contest.category || 'General',
+          requirements: Array.isArray(contest.requirements) ? contest.requirements : 
+                        typeof contest.requirements === 'object' && contest.requirements !== null 
+                          ? Object.values(contest.requirements) as string[]
+                          : [],
+          judges: Array.isArray(contest.judges) ? contest.judges : 
+                  typeof contest.judges === 'object' && contest.judges !== null
+                    ? Object.values(contest.judges) as string[]
+                    : [],
+          maxParticipants: contest.maxParticipants || 100,
+          currentParticipants: contest.currentParticipants || 0,
+          rules: contest.rules || '',
+          submissionGuidelines: contest.submissionGuidelines || '',
+          createdBy: contest.createdBy || contest.creatorName || 'Bass Clown Co',
+          createdAt: contest.createdAt ? new Date(contest.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: contest.updatedAt ? new Date(contest.updatedAt).toISOString() : new Date().toISOString()
+        }));
+        
+        setContests(transformedContests);
+        setFilteredContests(transformedContests);
+      } else {
+        throw new Error(result.message || 'Failed to fetch contests');
+      }
+    } catch (err) {
+      console.error('Error fetching contests:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching contests');
+      toast({
+        title: "Error",
+        description: "Failed to load contests. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     filterContests();
-  }, [searchTerm, selectedCategory, selectedStatus, activeTab]);
+  }, [searchTerm, selectedCategory, selectedStatus, activeTab, contests]);
 
   const filterContests = () => {
-    let filtered = contests;
+    let filtered = [...contests];
 
     // Filter by search term
     if (searchTerm) {
@@ -186,7 +137,7 @@ export default function ContestsPage() {
             const now = new Date();
             const timeDiff = deadline.getTime() - now.getTime();
             const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-            return daysDiff <= 7 && contest.status === 'open';
+            return daysDiff <= 7 && daysDiff > 0 && contest.status === 'open';
           });
           break;
         case 'judging':
@@ -210,14 +161,70 @@ export default function ContestsPage() {
         const now = new Date();
         const timeDiff = deadline.getTime() - now.getTime();
         const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        return daysDiff <= 7 && c.status === 'open';
+        return daysDiff <= 7 && daysDiff > 0 && c.status === 'open';
       }).length,
       judging: contests.filter(c => c.status === 'judging').length,
       completed: contests.filter(c => c.status === 'completed').length,
     };
   };
 
+  // Get unique categories from contests
+  const categories = Array.from(new Set(contests.map(c => c.category).filter(Boolean)));
+
   const counts = getContestCounts();
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96 mb-6" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
+                <CardContent className="p-4">
+                  <Skeleton className="h-16 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-24 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error && contests.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Alert variant="destructive" className="bg-[#2D2D2D] border-red-700">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-white">
+              {error}
+            </AlertDescription>
+          </Alert>
+          <Button onClick={fetchContests}>
+            Retry
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -269,7 +276,10 @@ export default function ContestsPage() {
                   <Trophy className="w-5 h-5 text-purple-500" />
                   <div>
                     <p className="text-sm text-gray-400">Total Prizes</p>
-                    <p className="text-2xl font-bold text-white">$5,000+</p>
+                    <p className="text-2xl font-bold text-white">${contests.reduce((sum, c) => {
+                      const prizeMatch = c.prize?.match(/\$?(\d+)/);
+                      return sum + (prizeMatch ? parseInt(prizeMatch[1]) : 0);
+                    }, 0).toLocaleString()}+</p>
                   </div>
                 </div>
               </CardContent>
@@ -297,9 +307,9 @@ export default function ContestsPage() {
               </SelectTrigger>
               <SelectContent className="bg-[#2D2D2D] border-gray-700">
                 <SelectItem value="all">All Categories</SelectItem>
-                {mockCategories.map(category => (
-                  <SelectItem key={category.id} value={category.name}>
-                    {category.name}
+                {categories.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -336,7 +346,9 @@ export default function ContestsPage() {
                   <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-white mb-2">No contests found</h3>
                   <p className="text-gray-400">
-                    Try adjusting your filters or search terms to find contests.
+                    {contests.length === 0 
+                      ? 'No contests available at the moment. Check back soon!'
+                      : 'Try adjusting your filters or search terms to find contests.'}
                   </p>
                 </CardContent>
               </Card>
@@ -346,9 +358,9 @@ export default function ContestsPage() {
                   <Card key={contest.id} className="bg-[#2D2D2D] border-gray-700 hover:bg-[#3D3D3D] transition-colors">
                     <CardHeader>
                       <div className="flex justify-between items-start">
-                        <div>
+                        <div className="flex-1">
                           <CardTitle className="text-white">{contest.title}</CardTitle>
-                          <CardDescription className="text-gray-400">{contest.description}</CardDescription>
+                          <CardDescription className="text-gray-400 line-clamp-2">{contest.shortDescription || contest.description}</CardDescription>
                         </div>
                         <Badge variant={contest.status === 'open' ? 'default' : 'secondary'}>
                           {contest.status}
@@ -357,13 +369,13 @@ export default function ContestsPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                                                 <div className="flex items-center gap-2 text-sm text-gray-400">
-                           <DollarSign className="w-4 h-4" />
-                           <span>Prize: {contest.prize}</span>
-                         </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                          <DollarSign className="w-4 h-4" />
+                          <span>Prize: {contest.prize}</span>
+                        </div>
                         <div className="flex items-center gap-2 text-sm text-gray-400">
                           <Users className="w-4 h-4" />
-                          <span>{contest.currentParticipants} / {contest.maxParticipants} participants</span>
+                          <span>{contest.currentParticipants} / {contest.maxParticipants || '∞'} participants</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-400">
                           <Calendar className="w-4 h-4" />
@@ -392,4 +404,4 @@ export default function ContestsPage() {
       </div>
     </DashboardLayout>
   );
-} 
+}

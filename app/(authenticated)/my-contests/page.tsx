@@ -9,178 +9,118 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 import ContestStatusCard from '@/components/contests/ContestStatusCard';
-import { Search, Trophy, Calendar, Clock, FileText, Plus, Filter } from 'lucide-react';
+import { Search, Trophy, Calendar, Clock, FileText, Plus, Filter, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 
-// Mock data - In a real app, this would come from an API
-const mockContests: Contest[] = [
-  {
-    id: '1',
-    title: 'Best Bass Fishing Video 2024',
-    description: 'Show us your best bass fishing skills in this exciting video contest.',
-    shortDescription: 'Submit your best bass fishing video for a chance to win premium fishing gear worth $2,000',
-    image: '/images/video-review-thumb-1.jpg',
-    prize: '$2,000 in Fishing Gear',
-    startDate: '2024-01-01',
-    endDate: '2024-03-31',
-    applicationDeadline: '2024-02-15',
-    submissionDeadline: '2024-03-15',
-    status: 'open',
-    category: 'Video Production',
-    requirements: ['Original video content only', 'HD quality (1080p+)', 'Bass fishing focused'],
-    judges: ['John Fisher', 'Sarah Bass', 'Mike Angler'],
-    maxParticipants: 100,
-    currentParticipants: 45,
-    rules: 'Contest rules and regulations...',
-    submissionGuidelines: 'Submission guidelines...',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '2',
-    title: 'Photography Contest: Fishing Moments',
-    description: 'Capture the perfect fishing moment in this photography contest.',
-    shortDescription: 'Capture the perfect fishing moment and win professional photography equipment',
-    image: '/images/assets/bass-taking-picture.svg',
-    prize: '$1,500 Photography Equipment',
-    startDate: '2024-02-01',
-    endDate: '2024-04-30',
-    applicationDeadline: '2024-03-01',
-    submissionDeadline: '2024-04-15',
-    status: 'judging',
-    category: 'Photography',
-    requirements: ['Original photography only', 'Fishing-related subject matter', 'High resolution'],
-    judges: ['Emma Photo', 'David Lens', 'Lisa Capture'],
-    maxParticipants: 75,
-    currentParticipants: 23,
-    rules: 'Photography contest rules...',
-    submissionGuidelines: 'Photography submission guidelines...',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-02-01T00:00:00Z',
-    updatedAt: '2024-02-01T00:00:00Z'
-  },
-  {
-    id: '3',
-    title: 'Fishing Tutorial Challenge',
-    description: 'Create an educational fishing tutorial.',
-    shortDescription: 'Create educational fishing content and win cash prizes',
-    image: '/images/assets/bass-fish-illustration.svg',
-    prize: '$1,000 Cash Prize',
-    startDate: '2024-03-01',
-    endDate: '2024-05-31',
-    applicationDeadline: '2024-04-01',
-    submissionDeadline: '2024-05-15',
-    status: 'completed',
-    category: 'Education',
-    requirements: ['Educational content focus', 'Clear instruction', 'Original content'],
-    judges: ['Tom Teach', 'Rachel Guide', 'Steve Mentor'],
-    maxParticipants: 50,
-    currentParticipants: 12,
-    rules: 'Educational contest rules...',
-    submissionGuidelines: 'Educational submission guidelines...',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-03-01T00:00:00Z',
-    updatedAt: '2024-03-01T00:00:00Z'
-  }
-];
-
-const mockApplications: ContestApplication[] = [
-  {
-    id: 'app-1',
-    contestId: '1',
-    userId: '1',
-    userEmail: 'john@example.com',
-    userName: 'John Fisher',
-    applicationDate: '2024-01-15T10:00:00Z',
-    status: 'approved',
-    responses: {
-      experience: 'I have been fishing for over 10 years and have experience in video production...',
-      motivation: 'I want to share my passion for bass fishing with others...',
-      equipment: 'Sony FX3 camera, underwater housing, drone...',
-      availability: 'Available weekends and evenings...'
-    },
-    reviewedBy: 'Admin',
-    reviewedAt: '2024-01-17T14:30:00Z'
-  },
-  {
-    id: 'app-2',
-    contestId: '2',
-    userId: '1',
-    userEmail: 'john@example.com',
-    userName: 'John Fisher',
-    applicationDate: '2024-02-10T09:00:00Z',
-    status: 'pending',
-    responses: {
-      experience: 'Professional photographer with 5 years experience...',
-      motivation: 'Photography is my passion and I love the outdoors...',
-      equipment: 'Canon EOS R5, various lenses, underwater housing...',
-      availability: 'Flexible schedule, can travel...'
-    }
-  },
-  {
-    id: 'app-3',
-    contestId: '3',
-    userId: '1',
-    userEmail: 'john@example.com',
-    userName: 'John Fisher',
-    applicationDate: '2024-03-05T16:00:00Z',
-    status: 'rejected',
-    responses: {
-      experience: 'Basic fishing knowledge...',
-      motivation: 'Want to try something new...',
-      equipment: 'Basic camera setup...',
-      availability: 'Limited availability...'
-    },
-    rejectionReason: 'Insufficient experience for educational content creation',
-    reviewedBy: 'Admin',
-    reviewedAt: '2024-03-07T11:00:00Z'
-  }
-];
-
-const mockSubmissions: ContestSubmission[] = [
-  {
-    id: 'sub-1',
-    contestId: '1',
-    applicationId: 'app-1',
-    userId: '1',
-    title: 'Epic Bass Fishing Adventure',
-    description: 'Join me on an exciting bass fishing trip where I demonstrate advanced techniques...',
-    fileUrl: '/videos/bass-fishing-adventure.mp4',
-    fileType: 'video',
-    submissionDate: '2024-02-20T12:00:00Z',
-    status: 'under_review',
-    reviewedBy: 'Judge Panel',
-    reviewedAt: '2024-02-21T10:00:00Z'
-  },
-  {
-    id: 'sub-2',
-    contestId: '2',
-    applicationId: 'app-2',
-    userId: '1',
-    title: 'Golden Hour Bass',
-    description: 'A stunning photograph of a bass caught during golden hour...',
-    fileUrl: '/images/golden-hour-bass.jpg',
-    fileType: 'image',
-    submissionDate: '2024-03-10T08:00:00Z',
-    status: 'approved',
-    score: 85,
-    feedback: 'Excellent composition and lighting. Great capture of the moment.',
-    reviewedBy: 'Photography Judge',
-    reviewedAt: '2024-03-12T15:00:00Z'
-  }
-];
-
 export default function MyContestsPage() {
   const { user } = useAuth();
-  const [contests, setContests] = useState<Contest[]>(mockContests);
-  const [applications, setApplications] = useState<ContestApplication[]>(mockApplications);
-  const [submissions, setSubmissions] = useState<ContestSubmission[]>(mockSubmissions);
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [applications, setApplications] = useState<ContestApplication[]>([]);
+  const [submissions, setSubmissions] = useState<ContestSubmission[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchMyContests();
+  }, []);
+
+  const fetchMyContests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/contests/my-contests', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch contests: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Transform applications
+        const transformedApplications: ContestApplication[] = result.data.applications.map((app: any) => ({
+          id: app.id,
+          contestId: app.contestId,
+          userId: app.userId,
+          userEmail: app.userEmail || '',
+          userName: app.userName || '',
+          applicationDate: app.applicationDate || new Date().toISOString(),
+          status: app.status || 'pending',
+          responses: app.responses || {},
+          rejectionReason: app.rejectionReason || undefined,
+          reviewedBy: app.reviewedBy || undefined,
+          reviewedAt: app.reviewedAt || undefined
+        }));
+
+        // Transform submissions
+        const transformedSubmissions: ContestSubmission[] = result.data.submissions.map((sub: any) => ({
+          id: sub.id,
+          contestId: sub.contestId,
+          applicationId: sub.applicationId || undefined,
+          userId: sub.userId,
+          title: sub.title || 'Untitled Submission',
+          description: sub.description || '',
+          fileUrl: sub.fileUrl || '',
+          fileType: sub.fileType || 'unknown',
+          submissionDate: sub.submissionDate || new Date().toISOString(),
+          status: sub.status || 'submitted',
+          score: sub.score || undefined,
+          feedback: sub.feedback || undefined,
+          judgeNotes: sub.judgeNotes || undefined,
+          reviewedBy: undefined,
+          reviewedAt: undefined
+        }));
+
+        // Extract unique contests from applications and submissions
+        const contestMap = new Map<string, Contest>();
+        
+        result.data.applications.forEach((app: any) => {
+          if (app.contest && !contestMap.has(app.contest.id)) {
+            contestMap.set(app.contest.id, app.contest);
+          }
+        });
+
+        result.data.submissions.forEach((sub: any) => {
+          if (sub.contest && !contestMap.has(sub.contest.id)) {
+            contestMap.set(sub.contest.id, sub.contest);
+          }
+        });
+
+        const uniqueContests = Array.from(contestMap.values());
+        
+        setApplications(transformedApplications);
+        setSubmissions(transformedSubmissions);
+        setContests(uniqueContests);
+      } else {
+        throw new Error(result.message || 'Failed to fetch contest data');
+      }
+    } catch (err) {
+      console.error('Error fetching my contests:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching contest data');
+      toast({
+        title: "Error",
+        description: "Failed to load your contest data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   // Filter contests based on user's applications
   const userContests = contests.filter(contest => 
@@ -216,6 +156,59 @@ export default function MyContestsPage() {
   };
 
   const counts = getContestCounts();
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
+                <CardContent className="p-4">
+                  <Skeleton className="h-16 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-24 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error && applications.length === 0 && submissions.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Alert variant="destructive" className="bg-[#2D2D2D] border-red-700">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-white">
+              {error}
+            </AlertDescription>
+          </Alert>
+          <Button onClick={fetchMyContests}>
+            Retry
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -409,7 +402,7 @@ export default function MyContestsPage() {
           <TabsContent value="applications" className="space-y-6">
             {applications.length > 0 ? (
               <div className="space-y-4">
-                {applications.map(application => {
+                {applications.filter(app => statusFilter === 'all' || app.status === statusFilter).map(application => {
                   const contest = contests.find(c => c.id === application.contestId);
                   if (!contest) return null;
                   

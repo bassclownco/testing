@@ -91,6 +91,16 @@ export async function requireAdmin(request: NextRequest): Promise<UserSession> {
   return user
 }
 
+export async function requireBrand(request: NextRequest): Promise<UserSession> {
+  const user = await requireAuth(request)
+  
+  if (user.role !== 'brand') {
+    throw new Error('Brand access required')
+  }
+
+  return user
+}
+
 export async function generateEmailVerificationToken(): Promise<string> {
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
   return token

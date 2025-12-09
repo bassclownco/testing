@@ -2,6 +2,7 @@ import { db, mediaKitTemplates, mediaKits, mediaKitAssets, mediaKitAnalytics, us
 import { eq, and, desc, count, sum, avg, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import puppeteer from 'puppeteer';
+import { put } from '@vercel/blob';
 
 export interface MediaKitTemplate {
   id: string;
@@ -123,9 +124,99 @@ export interface GeneratedMediaKit {
 class MediaKitService {
   
   /**
+   * Initialize default templates if they don't exist
+   */
+  async initializeDefaultTemplates(): Promise<void> {
+    try {
+      const existingTemplates = await db.select().from(mediaKitTemplates).limit(1);
+      
+      if (existingTemplates.length > 0) {
+        return; // Templates already exist
+      }
+
+      const defaultTemplates = [
+        {
+          name: 'Creator Portfolio',
+          description: 'Standard template for content creators showcasing their work and statistics',
+          type: 'creator' as const,
+          templateData: {
+            layout: 'portfolio',
+            sections: ['header', 'stats', 'portfolio', 'contact'],
+            colors: {
+              primary: '#c62828',
+              secondary: '#1976d2',
+              accent: '#ff9800',
+              background: '#ffffff',
+              text: '#333333'
+            },
+            fonts: {
+              heading: 'Arial, sans-serif',
+              body: 'Arial, sans-serif'
+            }
+          },
+          isActive: true,
+          isPremium: false
+        },
+        {
+          name: 'Brand Showcase',
+          description: 'Professional template for brands to showcase their campaigns and collaborations',
+          type: 'brand' as const,
+          templateData: {
+            layout: 'showcase',
+            sections: ['header', 'brandInfo', 'collaborations', 'contact'],
+            colors: {
+              primary: '#1976d2',
+              secondary: '#c62828',
+              accent: '#4caf50',
+              background: '#f5f5f5',
+              text: '#212121'
+            },
+            fonts: {
+              heading: 'Arial, sans-serif',
+              body: 'Arial, sans-serif'
+            }
+          },
+          isActive: true,
+          isPremium: false
+        },
+        {
+          name: 'Contest Highlights',
+          description: 'Template for showcasing contest entries and achievements',
+          type: 'contest' as const,
+          templateData: {
+            layout: 'highlights',
+            sections: ['header', 'stats', 'portfolio', 'recentActivity'],
+            colors: {
+              primary: '#ff9800',
+              secondary: '#c62828',
+              accent: '#1976d2',
+              background: '#ffffff',
+              text: '#333333'
+            },
+            fonts: {
+              heading: 'Arial, sans-serif',
+              body: 'Arial, sans-serif'
+            }
+          },
+          isActive: true,
+          isPremium: false
+        }
+      ];
+
+      await db.insert(mediaKitTemplates).values(defaultTemplates);
+      console.log('✅ Default media kit templates initialized');
+    } catch (error) {
+      console.error('Error initializing default templates:', error);
+      // Don't throw - templates might already exist
+    }
+  }
+  
+  /**
    * Get available templates
    */
   async getTemplates(type?: 'brand' | 'creator' | 'contest', includeInactive = false): Promise<MediaKitTemplate[]> {
+    // Ensure default templates exist
+    await this.initializeDefaultTemplates();
     try {
       const conditions = [eq(mediaKitTemplates.isActive, true)];
       
@@ -573,12 +664,26 @@ class MediaKitService {
   /**
    * Get user's media kits
    */
-  async getUserMediaKits(userId: string): Promise<GeneratedMediaKit[]> {
+  async getUserMediaKits(
+    userId: string, 
+    type?: 'brand' | 'creator' | 'contest',
+    status?: 'draft' | 'published' | 'archived'
+  ): Promise<GeneratedMediaKit[]> {
     try {
+      let conditions: any[] = [eq(mediaKits.userId, userId)];
+      
+      if (type) {
+        conditions.push(eq(mediaKits.type, type));
+      }
+      
+      if (status) {
+        conditions.push(eq(mediaKits.status, status));
+      }
+
       const kits = await db
         .select()
         .from(mediaKits)
-        .where(eq(mediaKits.userId, userId))
+        .where(and(...conditions))
         .orderBy(desc(mediaKits.updatedAt));
 
       return kits.map(kit => ({
@@ -604,73 +709,251 @@ class MediaKitService {
   // Private helper methods
 
   private generateHTML(mediaKit: any, template: any): string {
-    // This would generate HTML based on the template and media kit data
-    // For now, return a basic HTML structure
     const kitData = mediaKit.kitData as MediaKitData;
+    const customization = mediaKit.customization as MediaKitCustomization | null;
+    const templateData = template?.templateData || {};
+    
+    // Use customization colors if available, otherwise use template colors, otherwise defaults
+    const colors = customization?.colors || templateData.colors || {
+      primary: '#c62828',
+      secondary: '#1976d2',
+      accent: '#ff9800',
+      background: '#ffffff',
+      text: '#333333'
+    };
+    
+    const fonts = customization?.fonts || templateData.fonts || {
+      heading: 'Arial, sans-serif',
+      body: 'Arial, sans-serif'
+    };
     
     return `
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <title>${mediaKit.title}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .section { margin-bottom: 30px; }
-          .stats { display: flex; justify-content: space-around; margin: 20px 0; }
-          .stat-item { text-align: center; }
-          .portfolio { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-          .portfolio-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: ${fonts.body}; 
+            margin: 0; 
+            padding: 0;
+            background-color: ${colors.background};
+            color: ${colors.text};
+            line-height: 1.6;
+          }
+          .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 50px;
+            padding-bottom: 30px;
+            border-bottom: 3px solid ${colors.primary};
+          }
+          .header h1 {
+            font-family: ${fonts.heading};
+            font-size: 2.5em;
+            color: ${colors.primary};
+            margin-bottom: 10px;
+          }
+          .header h2 {
+            font-family: ${fonts.heading};
+            font-size: 1.8em;
+            color: ${colors.secondary};
+            margin-bottom: 15px;
+          }
+          .header p {
+            font-size: 1.1em;
+            color: ${colors.text};
+            max-width: 600px;
+            margin: 0 auto;
+          }
+          .section { 
+            margin-bottom: 40px;
+            padding: 30px;
+            background: ${colors.background === '#ffffff' ? '#f9f9f9' : colors.background};
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .section h3 {
+            font-family: ${fonts.heading};
+            font-size: 1.8em;
+            color: ${colors.primary};
+            margin-bottom: 20px;
+            border-bottom: 2px solid ${colors.accent};
+            padding-bottom: 10px;
+          }
+          .stats { 
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+          }
+          .stat-item { 
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-top: 4px solid ${colors.primary};
+          }
+          .stat-item strong {
+            display: block;
+            font-size: 2em;
+            color: ${colors.primary};
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+          .stat-item div {
+            color: ${colors.text};
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          .portfolio { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px;
+            margin-top: 20px;
+          }
+          .portfolio-item { 
+            border: 1px solid #ddd; 
+            padding: 20px; 
+            border-radius: 8px;
+            background: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+          .portfolio-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+          }
+          .portfolio-item h4 {
+            color: ${colors.primary};
+            margin-bottom: 10px;
+            font-size: 1.2em;
+          }
+          .portfolio-item p {
+            margin: 5px 0;
+            color: ${colors.text};
+            font-size: 0.9em;
+          }
+          .contact-info {
+            background: linear-gradient(135deg, ${colors.primary}15 0%, ${colors.secondary}15 100%);
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid ${colors.primary};
+          }
+          .contact-info p {
+            margin: 10px 0;
+            font-size: 1em;
+          }
+          .contact-info strong {
+            color: ${colors.primary};
+          }
+          .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+          }
+          @media print {
+            .section {
+              page-break-inside: avoid;
+            }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>${mediaKit.title}</h1>
-          <h2>${kitData.userInfo.name}</h2>
-          <p>${kitData.description || ''}</p>
-        </div>
-        
-        <div class="section">
-          <h3>Statistics</h3>
-          <div class="stats">
-            <div class="stat-item">
-              <strong>${kitData.stats.totalContests}</strong>
-              <div>Total Contests</div>
-            </div>
-            <div class="stat-item">
-              <strong>${kitData.stats.totalWins}</strong>
-              <div>Wins</div>
-            </div>
-            <div class="stat-item">
-              <strong>${kitData.stats.winRate}%</strong>
-              <div>Win Rate</div>
-            </div>
-            <div class="stat-item">
-              <strong>${kitData.stats.totalPoints}</strong>
-              <div>Total Points</div>
-            </div>
+        <div class="container">
+          <div class="header">
+            <h1>${mediaKit.title}</h1>
+            <h2>${kitData.userInfo.name}</h2>
+            ${kitData.description ? `<p>${kitData.description}</p>` : ''}
           </div>
-        </div>
-
-        <div class="section">
-          <h3>Portfolio</h3>
-          <div class="portfolio">
-            ${kitData.portfolio.map(item => `
-              <div class="portfolio-item">
-                <h4>${item.title}</h4>
-                <p><strong>Contest:</strong> ${item.contestName || 'N/A'}</p>
-                <p><strong>Score:</strong> ${item.score || 'N/A'}</p>
-                <p><strong>Date:</strong> ${item.date.toLocaleDateString()}</p>
+          
+          <div class="section">
+            <h3>Performance Statistics</h3>
+            <div class="stats">
+              <div class="stat-item">
+                <strong>${kitData.stats.totalContests}</strong>
+                <div>Total Contests</div>
               </div>
-            `).join('')}
+              <div class="stat-item">
+                <strong>${kitData.stats.totalWins}</strong>
+                <div>Wins</div>
+              </div>
+              <div class="stat-item">
+                <strong>${kitData.stats.winRate.toFixed(1)}%</strong>
+                <div>Win Rate</div>
+              </div>
+              <div class="stat-item">
+                <strong>${kitData.stats.totalPoints}</strong>
+                <div>Total Points</div>
+              </div>
+              <div class="stat-item">
+                <strong>${kitData.stats.averageScore.toFixed(1)}</strong>
+                <div>Avg Score</div>
+              </div>
+              <div class="stat-item">
+                <strong>${kitData.stats.contestsThisYear}</strong>
+                <div>This Year</div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div class="section">
-          <h3>Contact Information</h3>
-          <p><strong>Email:</strong> ${kitData.userInfo.email || 'Not provided'}</p>
-          <p><strong>Preferred Contact:</strong> ${kitData.contact.preferredContact}</p>
-          <p><strong>Availability:</strong> ${kitData.contact.availability}</p>
+          ${kitData.portfolio.length > 0 ? `
+          <div class="section">
+            <h3>Portfolio Highlights</h3>
+            <div class="portfolio">
+              ${kitData.portfolio.slice(0, 12).map(item => `
+                <div class="portfolio-item">
+                  <h4>${item.title}</h4>
+                  ${item.contestName ? `<p><strong>Contest:</strong> ${item.contestName}</p>` : ''}
+                  ${item.score ? `<p><strong>Score:</strong> ${item.score}</p>` : ''}
+                  ${item.placement ? `<p><strong>Placement:</strong> #${item.placement}</p>` : ''}
+                  <p><strong>Date:</strong> ${new Date(item.date).toLocaleDateString()}</p>
+                  ${item.description ? `<p style="margin-top: 10px; font-size: 0.85em; color: #666;">${item.description.substring(0, 100)}${item.description.length > 100 ? '...' : ''}</p>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+
+          <div class="section">
+            <h3>Contact & Collaboration</h3>
+            <div class="contact-info">
+              ${kitData.userInfo.email ? `<p><strong>Email:</strong> ${kitData.userInfo.email}</p>` : ''}
+              <p><strong>Preferred Contact:</strong> ${kitData.contact.preferredContact}</p>
+              <p><strong>Availability:</strong> ${kitData.contact.availability}</p>
+              ${kitData.contact.collaborationInterests.length > 0 ? `
+                <p><strong>Collaboration Interests:</strong> ${kitData.contact.collaborationInterests.join(', ')}</p>
+              ` : ''}
+            </div>
+          </div>
+
+          ${kitData.stats.recentActivity.length > 0 ? `
+          <div class="section">
+            <h3>Recent Activity</h3>
+            <ul style="list-style: none; padding: 0;">
+              ${kitData.stats.recentActivity.slice(0, 10).map(activity => `
+                <li style="padding: 10px 0; border-bottom: 1px solid #eee;">
+                  <strong>${activity.title}</strong> - ${new Date(activity.date).toLocaleDateString()}
+                  ${activity.result ? ` <span style="color: ${colors.secondary};">(${activity.result})</span>` : ''}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+          ` : ''}
+
+          <div class="footer">
+            <p>Generated by Bass Clown Co on ${new Date().toLocaleDateString()}</p>
+          </div>
         </div>
       </body>
       </html>
@@ -678,9 +961,21 @@ class MediaKitService {
   }
 
   private async uploadPDF(pdfBuffer: Buffer, filename: string): Promise<string> {
-    // This would upload the PDF to your storage provider (Vercel Blob, AWS S3, etc.)
-    // For now, return a placeholder URL
-    return `https://example.com/media-kits/${filename}`;
+    try {
+      const timestamp = Date.now();
+      const uniqueFilename = `media-kits/${timestamp}_${filename}`;
+      
+      const blob = await put(uniqueFilename, pdfBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'application/pdf'
+      });
+
+      return blob.url;
+    } catch (error) {
+      console.error('Error uploading PDF:', error);
+      throw new Error('Failed to upload PDF to storage');
+    }
   }
 }
 

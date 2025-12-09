@@ -96,100 +96,22 @@ export default function BrandAnalyticsPage() {
       setLoading(true);
       setError(null);
       
-      // For now, we'll use mock data since the brand analytics API isn't implemented yet
-      // In a real implementation, this would fetch from /api/brand/analytics
+      const response = await fetch(`/api/brand/analytics?period=${selectedPeriod}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch analytics: ${response.statusText}`);
+      }
+
+      const result = await response.json();
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockData: BrandAnalyticsData = {
-        period: `${selectedPeriod} days`,
-        dateRange: {
-          start: new Date(Date.now() - parseInt(selectedPeriod) * 24 * 60 * 60 * 1000).toISOString(),
-          end: new Date().toISOString()
-        },
-        overview: {
-          totalContests: 12,
-          activeContests: 3,
-          totalSubmissions: 247,
-          totalViews: 15420,
-          engagementRate: 73.2,
-          averageRating: 4.6
-        },
-        contests: [
-          {
-            id: '1',
-            title: 'Summer Bass Fishing Challenge',
-            status: 'active',
-            submissions: 89,
-            views: 5420,
-            engagementRate: 85.3,
-            averageRating: 4.8,
-            createdAt: '2024-01-15T00:00:00Z',
-            endDate: '2024-02-15T00:00:00Z'
-          },
-          {
-            id: '2',
-            title: 'Fly Fishing Mastery Contest',
-            status: 'completed',
-            submissions: 67,
-            views: 3890,
-            engagementRate: 78.1,
-            averageRating: 4.5,
-            createdAt: '2024-01-01T00:00:00Z',
-            endDate: '2024-01-31T00:00:00Z'
-          },
-          {
-            id: '3',
-            title: 'Ice Fishing Adventure',
-            status: 'active',
-            submissions: 45,
-            views: 2340,
-            engagementRate: 69.2,
-            averageRating: 4.3,
-            createdAt: '2024-01-20T00:00:00Z',
-            endDate: '2024-02-20T00:00:00Z'
-          }
-        ],
-        performance: {
-          topPerformingContest: {
-            title: 'Summer Bass Fishing Challenge',
-            submissions: 89,
-            engagementRate: 85.3
-          },
-          submissionTrends: [
-            { date: '2024-01-01', submissions: 12 },
-            { date: '2024-01-08', submissions: 18 },
-            { date: '2024-01-15', submissions: 25 },
-            { date: '2024-01-22', submissions: 32 },
-            { date: '2024-01-29', submissions: 28 }
-          ],
-          engagementMetrics: {
-            totalLikes: 1840,
-            totalShares: 420,
-            totalComments: 680
-          }
-        },
-        demographics: {
-          topLocations: [
-            { location: 'United States', percentage: 45 },
-            { location: 'Canada', percentage: 25 },
-            { location: 'United Kingdom', percentage: 15 },
-            { location: 'Australia', percentage: 10 },
-            { location: 'Other', percentage: 5 }
-          ],
-          ageGroups: [
-            { range: '18-24', percentage: 20 },
-            { range: '25-34', percentage: 35 },
-            { range: '35-44', percentage: 25 },
-            { range: '45-54', percentage: 15 },
-            { range: '55+', percentage: 5 }
-          ]
-        }
-      };
-      
-      setData(mockData);
-      
+      if (result.success) {
+        setData(result.data);
+      } else {
+        throw new Error(result.message || 'Failed to fetch analytics data');
+      }
     } catch (err) {
       console.error('Brand analytics fetch error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');

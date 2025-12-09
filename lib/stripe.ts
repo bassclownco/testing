@@ -25,6 +25,14 @@ export interface CreateSubscriptionParams {
   metadata?: Record<string, string>
 }
 
+export interface CreateRefundParams {
+  paymentIntentId?: string
+  chargeId?: string
+  amount?: number // in cents, partial refund if specified
+  reason?: 'duplicate' | 'fraudulent' | 'requested_by_customer'
+  metadata?: Record<string, string>
+}
+
 // Payment Intent operations
 export async function createPaymentIntent(params: CreatePaymentIntentParams): Promise<Stripe.PaymentIntent> {
   return await stripe.paymentIntents.create({
@@ -103,66 +111,93 @@ export async function retrieveSubscription(subscriptionId: string): Promise<Stri
   return await stripe.subscriptions.retrieve(subscriptionId)
 }
 
-export async function updateSubscription(subscriptionId: string, params: { priceId?: string }): Promise<Stripe.Subscription> {
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+export async function updateSubscription(
+  subscriptionId: string,
+  params: {
+    priceId?: string
+    metadata?: Record<string, string>
+    cancelAtPeriodEnd?: boolean
+  }
+): Promise<Stripe.Subscription> {
+  const updateParams: Stripe.SubscriptionUpdateParams = {}
   
-  return await stripe.subscriptions.update(subscriptionId, {
-    items: [{
+  if (params.priceId) {
+    const subscription = await retrieveSubscription(subscriptionId)
+    updateParams.items = [{
       id: subscription.items.data[0].id,
       price: params.priceId,
-    }],
-    proration_behavior: 'create_prorations',
-  })
-}
-
-export async function cancelSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
-  return await stripe.subscriptions.cancel(subscriptionId)
-}
-
-// Webhook utilities
-export function constructWebhookEvent(body: string, signature: string): Stripe.Event {
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!webhookSecret) {
-    throw new Error('STRIPE_WEBHOOK_SECRET is not set in environment variables')
+    }]
   }
   
-  return stripe.webhooks.constructEvent(body, signature, webhookSecret)
-}
-
-// Price utilities
-export async function listPrices(): Promise<Stripe.Price[]> {
-  const prices = await stripe.prices.list({
-    active: true,
-    expand: ['data.product'],
-  })
-  return prices.data
-}
-
-export async function createPrice(params: {
-  productId: string
-  unitAmount: number
-  currency: string
-  recurring?: {
-    interval: 'month' | 'year'
+  if (params.metadata) {
+    updateParams.metadata = params.metadata
   }
-}): Promise<Stripe.Price> {
-  return await stripe.prices.create({
-    product: params.productId,
-    unit_amount: params.unitAmount,
-    currency: params.currency,
-    recurring: params.recurring,
-  })
+  
+  if (params.cancelAtPeriodEnd !== undefined) {
+    updateParams.cancel_at_period_end = params.cancelAtPeriodEnd
+  }
+  
+  return await stripe.subscriptions.update(subscriptionId, updateParams)
 }
 
-// Product utilities
-export async function createProduct(params: {
-  name: string
-  description?: string
-  metadata?: Record<string, string>
-}): Promise<Stripe.Product> {
-  return await stripe.products.create({
-    name: params.name,
-    description: params.description,
+export async function cancelSubscription(
+  subscriptionId: string,
+  immediate: boolean = false
+): Promise<Stripe.Subscription> {
+  if (immediate) {
+    return await stripe.subscriptions.cancel(subscriptionId)
+  } else {
+    return await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    })
+  }
+}
+
+// Refund operations
+export async function createRefund(params: CreateRefundParams): Promise<Stripe.Refund> {
+  const refundParams: Stripe.RefundCreateParams = {
+    reason: params.reason,
     metadata: params.metadata,
-  })
-} 
+  }
+
+  if (params.paymentIntentId) {
+    refundParams.payment_intent = params.paymentIntentId
+  } else if (params.chargeId) {
+    refundParams.charge = params.chargeId
+  } else {
+    throw new Error('Either paymentIntentId or chargeId must be provided')
+  }
+
+  if (params.amount) {
+    refundParams.amount = params.amount
+  }
+
+  return await stripe.refunds.create(refundParams)
+}
+
+export async function retrieveRefund(refundId: string): Promise<Stripe.Refund> {
+  return await stripe.refunds.retrieve(refundId)
+}
+
+export async function listRefunds(params?: {
+  paymentIntentId?: string
+  chargeId?: string
+  limit?: number
+}): Promise<Stripe.Refund[]> {
+  const listParams: Stripe.RefundListParams = {
+    limit: params?.limit || 10,
+  }
+
+  if (params?.paymentIntentId) {
+    listParams.payment_intent = params.paymentIntentId
+  } else if (params?.chargeId) {
+    listParams.charge = params.chargeId
+  }
+
+  const refunds = await stripe.refunds.list(listParams)
+  return refunds.data
+}
+
+export async function cancelRefund(refundId: string): Promise<Stripe.Refund> {
+  return await stripe.refunds.cancel(refundId)
+}

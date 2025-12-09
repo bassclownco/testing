@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "bun run next dev",
-    "build": "bun run next build",
-    "start": "bun run next start",
-    "lint": "bun run next lint",
-    "create-admin": "run scripts/setup-database.ts"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "create-admin": "bun scripts/setup-database.ts",
+    "create-admin:node": "node scripts/setup-database-node.js",
+    "setup": "npm install && npm run create-admin:node"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

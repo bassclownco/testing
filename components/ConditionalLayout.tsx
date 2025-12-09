@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Header } from '@/components/Header';
@@ -20,6 +21,35 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({ children }
                                pathname.startsWith('/my-entries') ||
                                pathname.startsWith('/brand');
 
+  // Known public routes that should have header/footer
+  const knownPublicRoutes = [
+    '/',
+    '/our-work',
+    '/services',
+    '/about',
+    '/contact',
+    '/blog',
+    '/store',
+    '/content-contests',
+    '/giveaways',
+    '/how-it-works',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-email',
+    '/privacy',
+    '/terms',
+  ];
+
+  // Check if this is a known public route
+  const isKnownPublicRoute = knownPublicRoutes.some(route => {
+    if (route === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(route);
+  });
+
   if (isAuthenticatedRoute) {
     // For authenticated routes, render children without header/footer and with proper background
     return (
@@ -27,6 +57,12 @@ export const ConditionalLayout: React.FC<ConditionalLayoutProps> = ({ children }
         {children}
       </div>
     );
+  }
+
+  // For unknown routes (likely 404), render without header/footer wrapper
+  // The not-found.tsx component handles its own layout
+  if (!isKnownPublicRoute && pathname !== '/') {
+    return <>{children}</>;
   }
 
   // For unauthenticated routes, render with header and footer

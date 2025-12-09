@@ -45,12 +45,22 @@ Our mission: To create memorable fishing industry content that stands out in a c
 - **Giveaway Management**: Set up and manage giveaways with automated winner selection
 - **Analytics**: Detailed platform analytics and reporting
 - **Brand Management**: Tools for managing brand partnerships and collaborations
+- **Refund Management**: Process Stripe refunds with admin interface
+- **Backup & Recovery**: Database backup and restore functionality
+- **Migration Management**: Database migration system with rollback support
+- **Audit Logging**: Comprehensive audit trail of all admin actions and user activities
+- **W9 Form Management**: Review and verify tax forms for creators
+- **Reports Generation**: Generate PDF/CSV reports with scheduling
+- **Notifications**: System-wide notification management
 
 ### Brand Features
 - **Brand Dashboard**: Specialized interface for brand partners
 - **Contest Creation**: Create branded contests for content creators
 - **Analytics**: Track brand-specific metrics and engagement
 - **Collaboration Tools**: Manage partnerships with creators
+- **Collaboration Proposals**: Create and manage collaboration proposals with creators
+- **Brand Contracts**: Legal contract management and e-signature support
+- **Collaboration Messaging**: Direct messaging with creators
 
 ## 🛠️ Technical Stack
 
@@ -282,6 +292,14 @@ The project uses TypeScript interfaces defined in `lib/types.ts` for structured 
 - Maintain responsive design for all components
 - Use Tailwind utility classes for styling
 - Use semantic HTML elements for accessibility
+
+### Code Structure & Patterns
+
+- **IMPORTANT**: Always code in the existing structure and format
+- Build on what's already there instead of adding custom code
+- Follow existing patterns, conventions, and architectural decisions
+- Extend existing components and utilities rather than creating new ones
+- Maintain consistency with the current codebase style and organization
 
 ### Component Organization
 

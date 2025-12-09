@@ -15,7 +15,10 @@ import {
   Menu,
   X,
   ChevronDown,
-  LogOut
+  LogOut,
+  Database,
+  HardDrive,
+  DollarSign
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -71,6 +74,21 @@ const navigation = [
     name: 'Points System',
     href: '/admin/points',
     icon: Coins,
+  },
+  {
+    name: 'Migrations',
+    href: '/admin/migrations',
+    icon: Database,
+  },
+  {
+    name: 'Backups',
+    href: '/admin/backups',
+    icon: HardDrive,
+  },
+  {
+    name: 'Refunds',
+    href: '/admin/refunds',
+    icon: DollarSign,
   },
 ];
 

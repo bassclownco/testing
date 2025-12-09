@@ -1,5 +1,5 @@
 import { Dropbox, files } from 'dropbox';
-import { db, fileUploads } from '@/lib/db';
+import { db, fileUploads, dropboxSyncSettings, dropboxSyncJobs, dropboxFiles } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { emailService } from '@/lib/email-service';
 
@@ -79,18 +79,92 @@ export class DropboxSyncService {
 
     const finalSettings = { ...defaultSettings, ...settings };
 
-    // Store settings in user preferences or database
-    // For now, we'll store in memory or local storage
-    console.log('Dropbox sync initialized for user:', userId, finalSettings);
+    // Store settings in database
+    const [existing] = await db
+      .select()
+      .from(dropboxSyncSettings)
+      .where(eq(dropboxSyncSettings.userId, userId))
+      .limit(1);
+
+    if (existing) {
+      // Update existing settings
+      await db
+        .update(dropboxSyncSettings)
+        .set({
+          enabled: finalSettings.enabled,
+          autoSync: finalSettings.autoSync,
+          syncInterval: finalSettings.syncInterval,
+          syncPaths: finalSettings.syncPaths,
+          excludePatterns: finalSettings.excludePatterns,
+          maxFileSize: BigInt(finalSettings.maxFileSize),
+          allowedFileTypes: finalSettings.allowedFileTypes,
+          settings: {
+            accessToken: this.config.accessToken,
+            clientId: this.config.clientId,
+            clientSecret: this.config.clientSecret,
+            refreshToken: this.config.refreshToken
+          },
+          updatedAt: new Date()
+        })
+        .where(eq(dropboxSyncSettings.userId, userId));
+    } else {
+      // Create new settings
+      await db
+        .insert(dropboxSyncSettings)
+        .values({
+          userId,
+          enabled: finalSettings.enabled,
+          autoSync: finalSettings.autoSync,
+          syncInterval: finalSettings.syncInterval,
+          syncPaths: finalSettings.syncPaths,
+          excludePatterns: finalSettings.excludePatterns,
+          maxFileSize: BigInt(finalSettings.maxFileSize),
+          allowedFileTypes: finalSettings.allowedFileTypes,
+          settings: {
+            accessToken: this.config.accessToken,
+            clientId: this.config.clientId,
+            clientSecret: this.config.clientSecret,
+            refreshToken: this.config.refreshToken
+          }
+        });
+    }
+
+    console.log('Dropbox sync initialized for user:', userId);
   }
 
   // Start a full sync job
   async startFullSync(userId: string): Promise<string> {
-    const jobId = `sync_${userId}_${Date.now()}`;
+    // Create sync job record
+    const [job] = await db
+      .insert(dropboxSyncJobs)
+      .values({
+        userId,
+        status: 'pending',
+        jobType: 'full_sync',
+        totalFiles: 0,
+        processedFiles: 0,
+        failedFiles: 0
+      })
+      .returning({ id: dropboxSyncJobs.id });
+
+    const jobId = job.id;
     
+    // Update job status to running
+    await db
+      .update(dropboxSyncJobs)
+      .set({ status: 'running', startedAt: new Date() })
+      .where(eq(dropboxSyncJobs.id, jobId));
+
     // Start sync process asynchronously
     this.processFullSync(jobId, userId).catch(error => {
       console.error('Full sync failed:', error);
+      db.update(dropboxSyncJobs)
+        .set({ 
+          status: 'failed',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          completedAt: new Date()
+        })
+        .where(eq(dropboxSyncJobs.id, jobId));
     });
 
     return jobId;
@@ -130,6 +204,24 @@ export class DropboxSyncService {
           }
         }
       }
+
+      // Update job status
+      await db
+        .update(dropboxSyncJobs)
+        .set({
+          status: 'completed',
+          totalFiles,
+          processedFiles,
+          failedFiles,
+          completedAt: new Date()
+        })
+        .where(eq(dropboxSyncJobs.id, jobId));
+
+      // Update settings last sync time
+      await db
+        .update(dropboxSyncSettings)
+        .set({ lastSyncAt: new Date() })
+        .where(eq(dropboxSyncSettings.userId, userId));
 
       // Send completion notification
       try {

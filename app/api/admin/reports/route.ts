@@ -1,158 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { db } from '@/lib/db';
-import { users, contests, giveaways, contestSubmissions, giveawayEntries, pointsTransactions } from '@/lib/db/schema';
-import { eq, gte, lte, and, count, sql, desc } from 'drizzle-orm';
+import { NextRequest } from 'next/server';
+import { requireAdmin } from '@/lib/auth';
+import { successResponse, validationErrorResponse, handleApiError } from '@/lib/api-response';
+import { reportsService } from '@/lib/reports-service';
 import { z } from 'zod';
-
-import { unstable_noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
-// Check if we're in build mode
-// Treat any phase that includes the word “build” as build-time.  This avoids
-// relying on a specific NEXT_PHASE value that might be missing in some
-// environments (e.g. Bun, CI, or local builds).
-const isBuildTime =
-  (process.env.NEXT_PHASE?.includes('build') ?? false) ||
-  process.env.NEXT_PHASE === 'phase-export';
-
-const reportFiltersSchema = z.object({
-  reportType: z.string().optional(),
-  userType: z.string().optional(),
-  contestStatus: z.string().optional(),
-});
-
-const dateRangeSchema = z.object({
-  from: z.string().optional(),
-  to: z.string().optional(),
-});
-
 const generateReportSchema = z.object({
   type: z.string(),
-  dateRange: dateRangeSchema.optional(),
-  filters: reportFiltersSchema.optional(),
-  options: z.record(z.any()).optional(),
-});
+  format: z.enum(['pdf', 'excel', 'csv']).optional().default('pdf'),
+  dateRange: z.object({
+    from: z.string().optional(),
+    to: z.string().optional()
+  }).optional(),
+  filters: z.object({
+    contestId: z.string().uuid().optional(),
+    giveawayId: z.string().uuid().optional(),
+    userRole: z.string().optional(),
+    status: z.string().optional()
+  }).optional()
+})
 
-type ReportFilters = z.infer<typeof reportFiltersSchema>;
-type DateRange = z.infer<typeof dateRangeSchema>;
-type GenerateReportData = z.infer<typeof generateReportSchema>;
-
-interface ReportData {
-  id: string;
-  title: string;
-  description: string;
-  type: 'analytics' | 'financial' | 'user' | 'contest' | 'custom';
-  status: 'generating' | 'completed' | 'failed';
-  createdAt: Date;
-  size?: string;
-  downloadUrl?: string;
-  progress?: number;
-}
-
-// In-memory storage for demo purposes - in production, use a database
-const reports: ReportData[] = [];
-
+// GET - Get generated reports list
 export async function GET(request: NextRequest) {
-  unstable_noStore();
-  
-  // Skip during build time
-  if (isBuildTime) {
-    return NextResponse.json({
-      success: true,
-      reports: []
-    });
-  }
-  
   try {
-    // TODO: Add authentication check
-    return NextResponse.json({
-      success: true,
-      reports: reports.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    });
+    await requireAdmin(request)
+    
+    // For now, return empty list - reports would be stored in database in production
+    // TODO: Implement report storage/retrieval from database
+    return successResponse({
+      reports: []
+    }, 'Reports retrieved successfully')
 
   } catch (error) {
-    console.error('Error fetching reports:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch reports' },
-      { status: 500 }
-    );
+    return handleApiError(error)
   }
 }
 
+// POST - Generate a new report
 export async function POST(request: NextRequest) {
-  unstable_noStore();
-  
-  // Skip during build time
-  if (isBuildTime) {
-    return NextResponse.json({
-      success: true,
-      id: 'build-time-placeholder',
-      title: 'Build Time Report',
-      description: 'Placeholder report for build time',
-      type: 'analytics',
-      status: 'completed',
-      createdAt: new Date()
-    });
-  }
-  
   try {
-    // TODO: Add authentication check
+    const adminUser = await requireAdmin(request)
+    const body = await request.json()
 
-    // Parse body safely – during SSG build the fetch request body can be the
-    // string literal “undefined”, which would cause JSON.parse to throw.
-    const rawBody = await request.text();
-
-    if (!rawBody || rawBody === 'undefined') {
-      return NextResponse.json(
-        { error: 'No data provided in request body' },
-        { status: 400 }
-      );
+    // Validate input
+    const validation = generateReportSchema.safeParse(body)
+    if (!validation.success) {
+      return validationErrorResponse(validation.error.flatten().fieldErrors)
     }
 
-    let parsedBody: unknown;
-    try {
-      parsedBody = JSON.parse(rawBody);
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      );
+    const { type, format = 'pdf', dateRange, filters } = validation.data
+
+    // Convert date strings to Date objects
+    const reportFilters: any = {
+      startDate: dateRange?.from ? new Date(dateRange.from) : undefined,
+      endDate: dateRange?.to ? new Date(dateRange.to) : undefined,
+      contestId: filters?.contestId,
+      giveawayId: filters?.giveawayId,
+      userRole: filters?.userRole,
+      status: filters?.status
     }
 
-    const validatedData = generateReportSchema.parse(parsedBody);
+    // Generate report using reports service
+    const report = await reportsService.generateAdminReport(reportFilters, format as 'pdf' | 'excel')
 
-    // Generate report ID
-    const reportId = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Create report based on type
-    const report: ReportData = {
-      id: reportId,
-      title: getReportTitle(validatedData.type),
-      description: getReportDescription(validatedData.type),
-      type: getReportType(validatedData.type),
-      status: 'generating',
-      createdAt: new Date(),
-      progress: 0
-    };
-
-    reports.push(report);
-
-    // Start report generation in background
-    generateReportAsync(reportId, validatedData);
-
-    return NextResponse.json({
-      success: true,
-      ...report
-    });
+    return successResponse({
+      reportId: report.fileName.replace(/\.(pdf|excel|xlsx|csv)$/, ''),
+      fileName: report.fileName,
+      filePath: report.filePath,
+      format,
+      type,
+      generatedAt: new Date().toISOString()
+    }, 'Report generated successfully')
 
   } catch (error) {
-    console.error('Error generating report:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate report' },
-      { status: 500 }
-    );
+    return handleApiError(error)
   }
 }
 

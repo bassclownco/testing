@@ -2,6 +2,8 @@ import { db, users, contests, giveaways, contestSubmissions, giveawayEntries, fi
 import { eq, gte, lte, and, count, sum, avg, desc, asc } from 'drizzle-orm';
 import { createWriteStream } from 'fs';
 import { join } from 'path';
+import puppeteer from 'puppeteer';
+import { put } from '@vercel/blob';
 
 // For Excel generation
 interface ExcelData {
@@ -185,18 +187,15 @@ export class ReportsService {
     };
   }
 
-  // Generate Excel report
+  // Generate CSV/Excel report
   private async generateExcelReport(
     metrics: ReportMetrics, 
     period: string, 
     filters: ReportFilters
-  ): Promise<{ filePath: string; fileName: string }> {
-    // Simple CSV generation (would use a proper Excel library in production)
-    const fileName = `admin-report-${Date.now()}.csv`;
-    const filePath = join(process.cwd(), 'tmp', fileName);
+  ): Promise<{ filePath: string; fileName: string; url?: string }> {
+    const timestamp = Date.now();
+    const fileName = `admin-report-${timestamp}.csv`;
 
-    const csvData = this.generateCSVData(metrics, period);
-    
     // Create CSV content
     let csvContent = `Bass Clown Co. Admin Report\nPeriod: ${period}\nGenerated: ${new Date().toLocaleString()}\n\n`;
     
@@ -240,33 +239,88 @@ export class ReportsService {
       csvContent += `${type},${count}\n`;
     });
 
-    // Write to file (in production, you'd use proper file handling)
-    console.log('Generated CSV report:', csvContent.substring(0, 200) + '...');
+    // Engagement Metrics
+    csvContent += '\nEngagement Metrics\n';
+    csvContent += 'Metric,Value\n';
+    csvContent += `Daily Active Users,${metrics.engagementMetrics.dailyActiveUsers}\n`;
+    csvContent += `Weekly Active Users,${metrics.engagementMetrics.weeklyActiveUsers}\n`;
+    csvContent += `Monthly Active Users,${metrics.engagementMetrics.monthlyActiveUsers}\n`;
+    csvContent += `Avg Session Duration,${this.formatDuration(metrics.engagementMetrics.avgSessionDuration)}\n`;
 
-    return {
-      filePath: `/tmp/${fileName}`,
-      fileName
-    };
+    // Upload to Vercel Blob
+    try {
+      const csvBuffer = Buffer.from(csvContent, 'utf-8');
+      const blob = await put(`reports/${timestamp}_${fileName}`, csvBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'text/csv'
+      });
+
+      return {
+        filePath: `/tmp/${fileName}`,
+        fileName,
+        url: blob.url
+      };
+    } catch (error) {
+      console.error('Error uploading CSV report:', error);
+      // Return local path as fallback
+      return {
+        filePath: `/tmp/${fileName}`,
+        fileName
+      };
+    }
   }
 
-  // Generate PDF report (simplified HTML-based approach)
+  // Generate PDF report
   private async generatePDFReport(
     metrics: ReportMetrics, 
     period: string, 
     filters: ReportFilters
-  ): Promise<{ filePath: string; fileName: string }> {
-    const fileName = `admin-report-${Date.now()}.html`;
-    const filePath = join(process.cwd(), 'tmp', fileName);
+  ): Promise<{ filePath: string; fileName: string; url?: string }> {
+    const timestamp = Date.now();
+    const fileName = `admin-report-${timestamp}.pdf`;
 
     const htmlContent = this.generateHTMLReport(metrics, period);
     
-    // In production, you would use Puppeteer or similar to convert HTML to PDF
-    console.log('Generated HTML report (would convert to PDF in production)');
+    try {
+      // Generate PDF using Puppeteer
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
 
-    return {
-      filePath: `/tmp/${fileName}`,
-      fileName
-    };
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+      
+      const pdfBuffer = await page.pdf({
+        format: 'Letter',
+        printBackground: true,
+        margin: {
+          top: '0.5in',
+          right: '0.5in',
+          bottom: '0.5in',
+          left: '0.5in'
+        }
+      });
+
+      await browser.close();
+
+      // Upload PDF to Vercel Blob
+      const blob = await put(`reports/${timestamp}_${fileName}`, pdfBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'application/pdf'
+      });
+
+      return {
+        filePath: `/tmp/${fileName}`,
+        fileName,
+        url: blob.url
+      };
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      throw new Error('Failed to generate PDF report');
+    }
   }
 
   // Generate HTML content for PDF report
@@ -471,7 +525,238 @@ export class ReportsService {
     };
   }
 
+  // Generate user report CSV
+  async generateUserReportCSV(userReport: any): Promise<{ filePath: string; fileName: string; url?: string }> {
+    const timestamp = Date.now();
+    const fileName = `user-report-${timestamp}.csv`;
+    
+    let csvContent = `Bass Clown Co. User Report\nGenerated: ${new Date().toLocaleString()}\n\n`;
+    csvContent += 'ID,Email,Name,Role,Email Verified,Created At\n';
+    
+    userReport.data.forEach((user: any) => {
+      csvContent += `${user.id},${user.email},${user.name || ''},${user.role},${user.emailVerified},${new Date(user.createdAt).toLocaleString()}\n`;
+    });
+
+    const csvBuffer = Buffer.from(csvContent, 'utf-8');
+    const blob = await put(`reports/${timestamp}_${fileName}`, csvBuffer, {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: 'text/csv'
+    });
+
+    return {
+      filePath: `/tmp/${fileName}`,
+      fileName,
+      url: blob.url
+    };
+  }
+
+  // Generate user report PDF
+  async generateUserReportPDF(userReport: any): Promise<{ filePath: string; fileName: string; url?: string }> {
+    const timestamp = Date.now();
+    const fileName = `user-report-${timestamp}.pdf`;
+
+    const htmlContent = this.generateUserReportHTML(userReport);
+    
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    
+    const pdfBuffer = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' }
+    });
+
+    await browser.close();
+
+    const blob = await put(`reports/${timestamp}_${fileName}`, pdfBuffer, {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: 'application/pdf'
+    });
+
+    return {
+      filePath: `/tmp/${fileName}`,
+      fileName,
+      url: blob.url
+    };
+  }
+
+  // Generate contest report CSV
+  async generateContestReportCSV(contestReport: any): Promise<{ filePath: string; fileName: string; url?: string }> {
+    const timestamp = Date.now();
+    const fileName = `contest-report-${timestamp}.csv`;
+    
+    let csvContent = `Bass Clown Co. Contest Report\nGenerated: ${new Date().toLocaleString()}\n\n`;
+    csvContent += 'ID,Title,Status,Prize,Start Date,End Date,Created At\n';
+    
+    contestReport.data.forEach((contest: any) => {
+      csvContent += `${contest.id},${contest.title},${contest.status},${contest.prize || ''},${contest.startDate ? new Date(contest.startDate).toLocaleDateString() : ''},${contest.endDate ? new Date(contest.endDate).toLocaleDateString() : ''},${new Date(contest.createdAt).toLocaleString()}\n`;
+    });
+
+    const csvBuffer = Buffer.from(csvContent, 'utf-8');
+    const blob = await put(`reports/${timestamp}_${fileName}`, csvBuffer, {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: 'text/csv'
+    });
+
+    return {
+      filePath: `/tmp/${fileName}`,
+      fileName,
+      url: blob.url
+    };
+  }
+
+  // Generate contest report PDF
+  async generateContestReportPDF(contestReport: any): Promise<{ filePath: string; fileName: string; url?: string }> {
+    const timestamp = Date.now();
+    const fileName = `contest-report-${timestamp}.pdf`;
+
+    const htmlContent = this.generateContestReportHTML(contestReport);
+    
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    
+    const pdfBuffer = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' }
+    });
+
+    await browser.close();
+
+    const blob = await put(`reports/${timestamp}_${fileName}`, pdfBuffer, {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: 'application/pdf'
+    });
+
+    return {
+      filePath: `/tmp/${fileName}`,
+      fileName,
+      url: blob.url
+    };
+  }
+
+  // Generate HTML for user report
+  private generateUserReportHTML(userReport: any): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${userReport.title}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #c62828; padding-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #c62828; color: white; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${userReport.title}</h1>
+    <p>Generated: ${new Date().toLocaleString()}</p>
+    <p>Total Users: ${userReport.totalCount}</p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Email Verified</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${userReport.data.map((user: any) => `
+        <tr>
+          <td>${user.email}</td>
+          <td>${user.name || 'N/A'}</td>
+          <td>${user.role}</td>
+          <td>${user.emailVerified ? 'Yes' : 'No'}</td>
+          <td>${new Date(user.createdAt).toLocaleString()}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+</body>
+</html>
+    `;
+  }
+
+  // Generate HTML for contest report
+  private generateContestReportHTML(contestReport: any): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${contestReport.title}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #c62828; padding-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #c62828; color: white; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${contestReport.title}</h1>
+    <p>Generated: ${new Date().toLocaleString()}</p>
+    <p>Total Contests: ${contestReport.totalCount}</p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Status</th>
+        <th>Prize</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${contestReport.data.map((contest: any) => `
+        <tr>
+          <td>${contest.title}</td>
+          <td>${contest.status}</td>
+          <td>${contest.prize || 'N/A'}</td>
+          <td>${contest.startDate ? new Date(contest.startDate).toLocaleDateString() : 'N/A'}</td>
+          <td>${contest.endDate ? new Date(contest.endDate).toLocaleDateString() : 'N/A'}</td>
+          <td>${new Date(contest.createdAt).toLocaleString()}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+</body>
+</html>
+    `;
+  }
+
   // Helper methods
+  private formatDuration(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  }
   private buildDateFilter(startDate?: Date, endDate?: Date) {
     if (!startDate && !endDate) return undefined;
     

@@ -1,8 +1,14 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 import { Calendar, Clock, Gift, Trophy, Users, CheckCircle, Crown, ExternalLink, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
@@ -23,84 +29,67 @@ interface Entry {
   image: string;
 }
 
-// Mock data - replace with actual API calls
-const mockUserEntries: Entry[] = [
-  {
-    id: '1',
-    title: 'Bass Fishing Gear Bundle',
-    description: 'Win a complete bass fishing setup including rod, reel, and tackle box',
-    prizeValue: '$500',
-    entryCount: 234,
-    maxEntries: 1000,
-    startDate: new Date('2024-01-15'),
-    endDate: new Date('2024-02-15'),
-    status: 'active',
-    entryDate: new Date('2024-01-16'),
-    entryNumber: 45,
-    userResult: undefined,
-    image: '/images/giveaway-fishing-gear.jpg'
-  },
-  {
-    id: '2',
-    title: 'Tournament Entry Package',
-    description: 'Free entry to our next bass fishing tournament plus accommodation',
-    prizeValue: '$300',
-    entryCount: 156,
-    maxEntries: 500,
-    startDate: new Date('2024-02-01'),
-    endDate: new Date('2024-03-01'),
-    status: 'upcoming',
-    entryDate: new Date('2024-01-28'),
-    entryNumber: 23,
-    userResult: undefined,
-    image: '/images/giveaway-tournament.jpg'
-  },
-  {
-    id: '3',
-    title: 'Lucky Lure Collection',
-    description: 'Collection of 20 proven bass lures from top brands',
-    prizeValue: '$200',
-    entryCount: 156,
-    maxEntries: 200,
-    startDate: new Date('2023-10-01'),
-    endDate: new Date('2023-10-31'),
-    status: 'ended',
-    entryDate: new Date('2023-10-05'),
-    entryNumber: 12,
-    userResult: 'won',
-    image: '/images/giveaway-lures.jpg'
-  },
-  {
-    id: '4',
-    title: 'Summer Fishing Gear',
-    description: 'Essential gear for hot summer bass fishing',
-    prizeValue: '$300',
-    entryCount: 445,
-    maxEntries: 500,
-    startDate: new Date('2023-08-01'),
-    endDate: new Date('2023-08-31'),
-    status: 'ended',
-    entryDate: new Date('2023-08-03'),
-    entryNumber: 89,
-    userResult: 'lost',
-    image: '/images/giveaway-summer-gear.jpg'
-  },
-  {
-    id: '5',
-    title: 'Holiday Fishing Bundle',
-    description: 'Complete fishing setup perfect for the holidays',
-    prizeValue: '$750',
-    entryCount: 892,
-    maxEntries: 1000,
-    startDate: new Date('2023-12-01'),
-    endDate: new Date('2023-12-31'),
-    status: 'ended',
-    entryDate: new Date('2023-12-02'),
-    entryNumber: 67,
-    userResult: 'lost',
-    image: '/images/giveaway-holiday-bundle.jpg'
-  }
-];
+export default function MyEntriesPage() {
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchEntries();
+  }, []);
+
+  const fetchEntries = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/giveaways/my-entries', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch entries: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data?.entries) {
+        // Transform API data to match Entry type
+        const transformedEntries: Entry[] = result.data.entries.map((entry: any) => ({
+          id: entry.id,
+          title: entry.title,
+          description: entry.description || '',
+          prizeValue: entry.prizeValue || 'Prize TBD',
+          entryCount: entry.entryCount || 0,
+          maxEntries: entry.maxEntries || 0,
+          entryNumber: entry.entryNumber || 0,
+          entryDate: entry.entryDate instanceof Date ? entry.entryDate : new Date(entry.entryDate),
+          startDate: entry.startDate instanceof Date ? entry.startDate : new Date(entry.startDate),
+          endDate: entry.endDate instanceof Date ? entry.endDate : new Date(entry.endDate),
+          status: entry.status || 'ended',
+          userResult: entry.userResult,
+          image: entry.image || '/images/giveaway-fishing-gear.jpg'
+        }));
+        
+        setEntries(transformedEntries);
+      } else {
+        throw new Error(result.message || 'Failed to fetch entries');
+      }
+    } catch (err) {
+      console.error('Error fetching entries:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching entries');
+      toast({
+        title: "Error",
+        description: "Failed to load your giveaway entries. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 function EntryCard({ entry }: { entry: Entry }) {
   const isActive = entry.status === 'active';
@@ -108,8 +97,9 @@ function EntryCard({ entry }: { entry: Entry }) {
   const isEnded = entry.status === 'ended';
   const userWon = entry.userResult === 'won';
   const userLost = entry.userResult === 'lost';
-  const daysLeft = Math.ceil((entry.endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-  const entryPercentage = (entry.entryCount / entry.maxEntries) * 100;
+  const endDate = entry.endDate instanceof Date ? entry.endDate : new Date(entry.endDate);
+  const daysLeft = Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  const entryPercentage = entry.maxEntries > 0 ? (entry.entryCount / entry.maxEntries) * 100 : 0;
   
   return (
     <Card className="bg-[#2D2D2D] border-gray-700 hover:bg-[#3D3D3D] transition-colors">
@@ -189,14 +179,17 @@ function EntryCard({ entry }: { entry: Entry }) {
             
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <Clock className="w-4 h-4" />
-              {isActive && (
-                <span>Ends in {daysLeft} days ({entry.endDate.toLocaleDateString()})</span>
+              {isActive && daysLeft > 0 && (
+                <span>Ends in {daysLeft} days ({endDate.toLocaleDateString()})</span>
+              )}
+              {isActive && daysLeft <= 0 && (
+                <span>Ended {endDate.toLocaleDateString()}</span>
               )}
               {isUpcoming && (
-                <span>Starts {entry.startDate.toLocaleDateString()}</span>
+                <span>Starts {(entry.startDate instanceof Date ? entry.startDate : new Date(entry.startDate)).toLocaleDateString()}</span>
               )}
               {isEnded && (
-                <span>Ended {entry.endDate.toLocaleDateString()}</span>
+                <span>Ended {endDate.toLocaleDateString()}</span>
               )}
             </div>
           </div>
@@ -222,13 +215,66 @@ function EntryCard({ entry }: { entry: Entry }) {
   );
 }
 
-export default function MyEntriesPage() {
-  const activeEntries = mockUserEntries.filter(e => e.status === 'active');
-  const upcomingEntries = mockUserEntries.filter(e => e.status === 'upcoming');
-  const endedEntries = mockUserEntries.filter(e => e.status === 'ended');
-  const wins = mockUserEntries.filter(e => e.userResult === 'won');
-  const losses = mockUserEntries.filter(e => e.userResult === 'lost');
-  const totalPrizeValue = mockUserEntries.reduce((sum, e) => sum + parseInt(e.prizeValue.replace('$', '').replace(',', '')), 0);
+  const activeEntries = entries.filter(e => e.status === 'active');
+  const upcomingEntries = entries.filter(e => e.status === 'upcoming');
+  const endedEntries = entries.filter(e => e.status === 'ended');
+  const wins = entries.filter(e => e.userResult === 'won');
+  const losses = entries.filter(e => e.userResult === 'lost');
+  const totalPrizeValue = entries.reduce((sum, e) => {
+    const value = e.prizeValue.match(/\$?(\d+)/)?.[1];
+    return sum + (value ? parseInt(value) : 0);
+  }, 0);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
+                <CardContent className="p-4">
+                  <Skeleton className="h-16 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
+                <Skeleton className="aspect-video w-full mb-4" />
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error && entries.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Alert variant="destructive" className="bg-[#2D2D2D] border-red-700">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-white">
+              {error}
+            </AlertDescription>
+          </Alert>
+          <Button onClick={fetchEntries}>
+            Retry
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
   
   return (
     <DashboardLayout>
@@ -252,7 +298,7 @@ export default function MyEntriesPage() {
           <Card className="bg-[#2D2D2D] border-gray-700">
             <CardContent className="p-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-400">{mockUserEntries.length}</div>
+                <div className="text-2xl font-bold text-blue-400">{entries.length}</div>
                 <div className="text-sm text-gray-400">Total Entries</div>
               </div>
             </CardContent>
@@ -430,7 +476,7 @@ export default function MyEntriesPage() {
         </Tabs>
 
         {/* Empty State for no entries at all */}
-        {mockUserEntries.length === 0 && (
+        {entries.length === 0 && (
           <Card className="bg-[#2D2D2D] border-gray-700">
             <CardContent className="p-8 text-center">
               <Gift className="w-16 h-16 text-gray-400 mx-auto mb-4" />

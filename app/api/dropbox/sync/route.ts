@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { requireAuth } from '@/lib/auth';
 import { successResponse, errorResponse, validationErrorResponse, handleApiError } from '@/lib/api-response';
 import { createDropboxSyncService } from '@/lib/dropbox-sync';
+import { db, dropboxSyncSettings, dropboxSyncJobs, dropboxFiles } from '@/lib/db';
+import { eq, and, desc, count } from 'drizzle-orm';
 
 const syncRequestSchema = z.object({
   accessToken: z.string().min(1, 'Access token is required'),
@@ -74,19 +76,82 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request);
-    const { searchParams } = new URL(request.url);
-    
-    // For demo purposes, we'll return mock data since we need actual Dropbox credentials
-    const mockStatus = {
-      isEnabled: false,
-      lastSync: undefined,
-      totalFiles: 0,
-      syncedFiles: 0,
-      pendingFiles: 0,
-      errorFiles: 0
-    };
 
-    return successResponse(mockStatus, 'Sync status retrieved');
+    // Get settings
+    const [settings] = await db
+      .select()
+      .from(dropboxSyncSettings)
+      .where(eq(dropboxSyncSettings.userId, user.id))
+      .limit(1);
+
+    if (!settings) {
+      return successResponse({
+        isEnabled: false,
+        lastSync: undefined,
+        totalFiles: 0,
+        syncedFiles: 0,
+        pendingFiles: 0,
+        errorFiles: 0,
+        currentJob: null
+      }, 'Sync status retrieved');
+    }
+
+    // Get latest sync job
+    const [latestJob] = await db
+      .select()
+      .from(dropboxSyncJobs)
+      .where(eq(dropboxSyncJobs.userId, user.id))
+      .orderBy(desc(dropboxSyncJobs.startedAt))
+      .limit(1);
+
+    // Get file counts
+    const [syncedCount] = await db
+      .select({ count: count() })
+      .from(dropboxFiles)
+      .where(and(
+        eq(dropboxFiles.userId, user.id),
+        eq(dropboxFiles.syncStatus, 'synced')
+      ));
+
+    const [pendingCount] = await db
+      .select({ count: count() })
+      .from(dropboxFiles)
+      .where(and(
+        eq(dropboxFiles.userId, user.id),
+        eq(dropboxFiles.syncStatus, 'pending')
+      ));
+
+    const [errorCount] = await db
+      .select({ count: count() })
+      .from(dropboxFiles)
+      .where(and(
+        eq(dropboxFiles.userId, user.id),
+        eq(dropboxFiles.syncStatus, 'error')
+      ));
+
+    const [totalCount] = await db
+      .select({ count: count() })
+      .from(dropboxFiles)
+      .where(eq(dropboxFiles.userId, user.id));
+
+    return successResponse({
+      isEnabled: settings.enabled || false,
+      lastSync: latestJob?.completedAt || latestJob?.startedAt || settings.lastSyncAt || undefined,
+      totalFiles: totalCount?.count || 0,
+      syncedFiles: syncedCount?.count || 0,
+      pendingFiles: pendingCount?.count || 0,
+      errorFiles: errorCount?.count || 0,
+      currentJob: latestJob ? {
+        id: latestJob.id,
+        status: latestJob.status,
+        progress: latestJob.totalFiles > 0 
+          ? (latestJob.processedFiles / latestJob.totalFiles) * 100 
+          : 0,
+        processedFiles: latestJob.processedFiles,
+        totalFiles: latestJob.totalFiles,
+        failedFiles: latestJob.failedFiles
+      } : null
+    }, 'Sync status retrieved');
 
   } catch (error) {
     return handleApiError(error);

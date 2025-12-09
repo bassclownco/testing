@@ -1,0 +1,29 @@
+# Copy this file to .env.local and fill in your values
+
+# Database Configuration (REQUIRED)
+# Get a free database from https://neon.tech or use local PostgreSQL
+DATABASE_URL=postgresql://user:password@localhost:5432/bassclown
+
+# Authentication & Security (REQUIRED)
+# Generate random strings for these
+NEXTAUTH_SECRET=your-random-secret-key-here
+JWT_SECRET=your-random-jwt-secret-here
+W9_ENCRYPTION_KEY=your-32-character-encryption-key-here
+
+# Email Service (OPTIONAL - for local dev)
+RESEND_API_KEY=
+SEND_EMAILS_TO=admin@bassclown.com
+SEND_EMAILS_FROM=Contact Form <onboarding@resend.dev>
+
+# Payment Processing (OPTIONAL - for local dev)
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRO_PRICE_ID=
+STRIPE_PREMIUM_PRICE_ID=
+
+# Application Configuration (REQUIRED)
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Vercel Blob Storage (OPTIONAL - for local dev)
+BLOB_READ_WRITE_TOKEN=
+
