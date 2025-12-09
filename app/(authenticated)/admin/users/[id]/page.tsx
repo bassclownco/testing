@@ -1,85 +1,43 @@
+'use client'
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit, Shield, Ban, Mail, Phone, Calendar, Trophy, Award, Gift } from 'lucide-react';
 import Link from 'next/link';
+import { RoleManagementDialog } from '@/components/admin/RoleManagementDialog';
+import { useParams, useRouter } from 'next/navigation';
 
-interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
+export default function UserDetailsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params.id as string;
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
 
-// Mock data - in a real app, this would be fetched from your database
-const userData = {
-  id: '1',
-  name: 'John Fisher',
-  email: 'john@example.com',
-  phone: '+1 (555) 123-4567',
-  role: 'member',
-  status: 'active',
-  joinDate: '2024-01-15',
-  lastLogin: '2024-01-20',
-  avatar: null,
-  bio: 'Passionate angler with 10+ years of fishing experience. Love competing in tournaments and sharing my catches with the community.',
-  location: 'Austin, TX',
-  preferences: {
-    notifications: true,
-    newsletter: true,
-    publicProfile: true,
-  },
-  stats: {
-    contestsEntered: 5,
-    contestsWon: 2,
-    pointsEarned: 1250,
-    totalSubmissions: 12,
-    giveawaysWon: 1,
-  },
-  activity: [
-    {
-      id: '1',
-      type: 'contest_entry',
-      title: 'Entered Bass Fishing Championship',
-      date: '2024-01-20',
-      status: 'completed',
-    },
-    {
-      id: '2',
-      type: 'contest_win',
-      title: 'Won Video Review Contest',
-      date: '2024-01-18',
-      status: 'completed',
-    },
-    {
-      id: '3',
-      type: 'giveaway_entry',
-      title: 'Entered Premium Rod Giveaway',
-      date: '2024-01-17',
-      status: 'pending',
-    },
-  ],
-  contests: [
-    {
-      id: '1',
-      title: 'Bass Fishing Championship',
-      status: 'active',
-      entryDate: '2024-01-20',
-      submissionStatus: 'submitted',
-    },
-    {
-      id: '2',
-      title: 'Video Review Contest',
-      status: 'completed',
-      entryDate: '2024-01-15',
-      submissionStatus: 'winner',
-    },
-  ],
-};
+  useEffect(() => {
+    // Fetch user data
+    fetch(`/api/admin/users/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setUser(data.data);
+        }
+        setIsLoading(false);
+      })
+      .catch(() => setIsLoading(false));
+  }, [id]);
 
-export default async function UserDetailsPage({ params }: PageProps) {
-  const { id } = await params;
-  const user = userData; // In a real app, fetch by id
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <div>User not found</div>;
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -114,9 +72,13 @@ export default async function UserDetailsPage({ params }: PageProps) {
             <Edit className="h-4 w-4 mr-2" />
             Edit User
           </Button>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setRoleDialogOpen(true)}
+          >
             <Shield className="h-4 w-4 mr-2" />
-            Manage Permissions
+            Manage Role
           </Button>
         </div>
       </div>
@@ -322,6 +284,24 @@ export default async function UserDetailsPage({ params }: PageProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <RoleManagementDialog
+        userId={user.id}
+        userName={user.name || user.email}
+        currentRole={user.role}
+        open={roleDialogOpen}
+        onOpenChange={setRoleDialogOpen}
+        onRoleUpdated={() => {
+          // Refresh user data
+          fetch(`/api/admin/users/${id}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                setUser(data.data);
+              }
+            });
+        }}
+      />
     </div>
   );
 } 

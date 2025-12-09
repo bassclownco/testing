@@ -138,3 +138,5 @@ bun.lock
 .DS_Store
 .vercel
 .env*.local
+
+.vercel
