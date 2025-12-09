@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { successResponse, handleApiError } from '@/lib/api-response'
 import { migrationService } from '@/lib/database-migrations'
 
@@ -8,8 +8,7 @@ export const dynamic = 'force-dynamic';
 // GET - Get migration status
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    await requireAdmin(request)
 
     await migrationService.initialize()
     const status = await migrationService.getMigrationStatus()
@@ -28,8 +27,7 @@ export async function GET(request: NextRequest) {
 // POST - Run pending migrations
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    await requireAdmin(request)
 
     await migrationService.initialize()
     await migrationService.runPendingMigrations()

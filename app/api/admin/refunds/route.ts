@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { successResponse, validationErrorResponse, handleApiError } from '@/lib/api-response'
 import { createRefund, retrieveRefund, listRefunds } from '@/lib/stripe'
 import { db, paymentHistory, users } from '@/lib/db'
@@ -21,8 +21,7 @@ const createRefundSchema = z.object({
 // GET - List refunds
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    await requireAdmin(request)
     const { searchParams } = new URL(request.url)
     
     const paymentIntentId = searchParams.get('paymentIntentId')
@@ -47,8 +46,7 @@ export async function GET(request: NextRequest) {
 // POST - Create refund
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    const user = await requireAdmin(request)
     const body = await request.json()
 
     // Validate input

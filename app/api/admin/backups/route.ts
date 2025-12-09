@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { successResponse, validationErrorResponse, handleApiError } from '@/lib/api-response'
 import { backupRecoveryService } from '@/lib/backup-recovery'
 
@@ -15,8 +15,7 @@ const createBackupSchema = z.object({
 // GET - List backups
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    await requireAdmin(request)
     const { searchParams } = new URL(request.url)
     
     const type = searchParams.get('type') as any
@@ -41,8 +40,7 @@ export async function GET(request: NextRequest) {
 // POST - Create backup
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    await requireAdmin(request)
     const body = await request.json()
 
     // Validate input

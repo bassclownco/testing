@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { successResponse, handleApiError } from '@/lib/api-response'
 import { auditLogService } from '@/lib/audit-log'
 
@@ -8,8 +8,7 @@ export const dynamic = 'force-dynamic';
 // GET - Get audit logs
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    await requireAdmin(request)
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId') || undefined

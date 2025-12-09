@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { successResponse, validationErrorResponse, handleApiError, notFoundResponse } from '@/lib/api-response'
 import { backupRecoveryService } from '@/lib/backup-recovery'
 
@@ -20,8 +20,7 @@ export async function POST(
   { params }: { params: Promise<{ backupId: string }> }
 ) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    await requireAdmin(request)
     const { backupId } = await params
     const body = await request.json()
 

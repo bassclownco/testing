@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { requireAuth, requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { successResponse, handleApiError, notFoundResponse } from '@/lib/api-response'
 import { migrationService } from '@/lib/database-migrations'
 
@@ -11,8 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ version: string }> }
 ) {
   try {
-    const user = await requireAuth(request)
-    await requireAdmin(user)
+    await requireAdmin(request)
     const { version } = await params
 
     await migrationService.initialize()
