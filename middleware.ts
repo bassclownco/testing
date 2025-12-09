@@ -9,7 +9,7 @@ const RATE_LIMIT_MAX_REQUESTS = 100 // 100 requests per minute
 
 function getRateLimitKey(request: NextRequest): string {
   // Use IP address or user ID for rate limiting
-  const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
   const path = new URL(request.url).pathname
   return `${ip}:${path}`
 }
@@ -38,7 +38,7 @@ function checkRateLimit(key: string): boolean {
 // Clean up old rate limit records periodically
 setInterval(() => {
   const now = Date.now()
-  for (const [key, record] of rateLimitStore.entries()) {
+  for (const [key, record] of Array.from(rateLimitStore.entries())) {
     if (now > record.resetTime) {
       rateLimitStore.delete(key)
     }

@@ -817,7 +817,7 @@ export class W9FormService {
       const timestamp = Date.now();
       const filename = `w9-forms/${form.userId}/${timestamp}_w9-form-${w9FormId}.pdf`;
       
-      const blob = await put(filename, pdfBuffer, {
+      const blob = await put(filename, Buffer.from(pdfBuffer), {
         access: 'public',
         addRandomSuffix: false,
         contentType: 'application/pdf'
@@ -1038,11 +1038,11 @@ export class W9FormService {
     <div class="section-title">Part IV: Exemptions</div>
     <div class="field-group">
       <span class="field-label">Exempt payee code (if any):</span>
-      <div class="field-value">${formData.exemptPayeeCode || 'N/A'}</div>
+      <div class="field-value">N/A</div>
     </div>
     <div class="field-group">
       <span class="field-label">Exemption from FATCA reporting code (if any):</span>
-      <div class="field-value">${formData.exemptFromFatca ? 'Yes' : 'No'}</div>
+      <div class="field-value">No</div>
     </div>
   </div>
   ` : ''}
@@ -1058,10 +1058,10 @@ export class W9FormService {
         ${form.certificationDate ? new Date(form.certificationDate).toLocaleDateString() : ''}
       </div>
     </div>
-    ${formData.signatureName ? `
+    ${formData.payeeName ? `
     <div class="field-group">
       <span class="field-label">Print name:</span>
-      <div class="field-value">${formData.signatureName}</div>
+      <div class="field-value">${formData.payeeName}</div>
     </div>
     ` : ''}
   </div>

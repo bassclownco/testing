@@ -306,7 +306,7 @@ export class ReportsService {
       await browser.close();
 
       // Upload PDF to Vercel Blob
-      const blob = await put(`reports/${timestamp}_${fileName}`, pdfBuffer, {
+      const blob = await put(`reports/${timestamp}_${fileName}`, Buffer.from(pdfBuffer), {
         access: 'public',
         addRandomSuffix: false,
         contentType: 'application/pdf'
@@ -574,7 +574,7 @@ export class ReportsService {
 
     await browser.close();
 
-    const blob = await put(`reports/${timestamp}_${fileName}`, pdfBuffer, {
+    const blob = await put(`reports/${timestamp}_${fileName}`, Buffer.from(pdfBuffer), {
       access: 'public',
       addRandomSuffix: false,
       contentType: 'application/pdf'
@@ -636,7 +636,7 @@ export class ReportsService {
 
     await browser.close();
 
-    const blob = await put(`reports/${timestamp}_${fileName}`, pdfBuffer, {
+    const blob = await put(`reports/${timestamp}_${fileName}`, Buffer.from(pdfBuffer), {
       access: 'public',
       addRandomSuffix: false,
       contentType: 'application/pdf'
