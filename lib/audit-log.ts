@@ -1,11 +1,11 @@
-import { db } from './db';
+import { db, users } from './db';
 import { sql } from 'drizzle-orm';
 import { pgTable, text, timestamp, uuid, jsonb, varchar } from 'drizzle-orm/pg-core';
 
 // Audit log table
 export const auditLog = pgTable('audit_log', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => import('./db').then(m => m.users.id)),
+  userId: uuid('user_id').references(() => users.id),
   action: varchar('action', { length: 100 }).notNull(),
   resourceType: varchar('resource_type', { length: 50 }).notNull(), // user, contest, giveaway, payment, etc.
   resourceId: uuid('resource_id'),

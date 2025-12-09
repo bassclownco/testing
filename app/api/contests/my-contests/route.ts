@@ -42,9 +42,11 @@ export async function GET(request: NextRequest) {
       userId: application.userId,
       userEmail: user.email,
       userName: user.name || user.email,
-      applicationDate: application.createdAt instanceof Date 
-        ? application.createdAt.toISOString() 
-        : new Date(application.createdAt).toISOString(),
+      applicationDate: application.createdAt instanceof Date     
+        ? application.createdAt.toISOString()
+        : application.createdAt 
+          ? new Date(application.createdAt).toISOString()
+          : new Date().toISOString(),
       status: application.status || 'pending',
       responses: typeof application.responses === 'object' && application.responses !== null
         ? application.responses
@@ -94,9 +96,11 @@ export async function GET(request: NextRequest) {
       score: submission.score ? Number(submission.score) : undefined,
       feedback: submission.feedback || undefined,
       judgeNotes: submission.judgeNotes || undefined,
-      submissionDate: submission.createdAt instanceof Date 
-        ? submission.createdAt.toISOString() 
-        : new Date(submission.createdAt).toISOString(),
+      submissionDate: submission.createdAt instanceof Date      
+        ? submission.createdAt.toISOString()
+        : submission.createdAt 
+          ? new Date(submission.createdAt).toISOString()
+          : new Date().toISOString(),
       contest: {
         id: contest.id,
         title: contest.title,

@@ -108,8 +108,4 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
-  // Set base URL for local development
-  basePath: "/api/auth",
-  // Trust proxy for proper URL generation
-  trustHost: true,
 } 

@@ -201,3 +201,38 @@ export async function listRefunds(params?: {
 export async function cancelRefund(refundId: string): Promise<Stripe.Refund> {
   return await stripe.refunds.cancel(refundId)
 }
+
+// Price operations
+export async function listPrices(params?: {
+  active?: boolean
+  limit?: number
+}): Promise<Stripe.Price[]> {
+  const listParams: Stripe.PriceListParams = {
+    limit: params?.limit || 100,
+  }
+  
+  if (params?.active !== undefined) {
+    listParams.active = params.active
+  }
+
+  const prices = await stripe.prices.list(listParams)
+  return prices.data
+}
+
+// Webhook verification
+export function constructWebhookEvent(
+  payload: string | Buffer,
+  signature: string
+): Stripe.Event {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  
+  if (!webhookSecret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not set')
+  }
+
+  return stripe.webhooks.constructEvent(
+    payload,
+    signature,
+    webhookSecret
+  )
+}

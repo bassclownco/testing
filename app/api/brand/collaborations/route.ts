@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
         id: brandCollaborations.id,
         brandId: brandCollaborations.brandId,
         creatorId: brandCollaborations.creatorId,
-        proposalId: brandCollaborations.proposalId,
         status: brandCollaborations.status,
         createdAt: brandCollaborations.createdAt,
         updatedAt: brandCollaborations.updatedAt

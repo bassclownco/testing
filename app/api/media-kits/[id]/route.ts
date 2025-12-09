@@ -108,7 +108,7 @@ export async function PATCH(
       {
         title: validation.data.title,
         description: validation.data.description,
-        customization: validation.data.customization,
+        customization: validation.data.customization as any,
         status: validation.data.status,
         isPublic: validation.data.isPublic
       }

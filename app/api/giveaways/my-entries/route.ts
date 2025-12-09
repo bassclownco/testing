@@ -63,7 +63,11 @@ export async function GET(request: NextRequest) {
         entryCount: 0, // Will be calculated separately
         maxEntries: giveaway.maxEntries || null,
         entryNumber: entry.entryNumber || 0,
-        entryDate: entry.createdAt instanceof Date ? entry.createdAt : new Date(entry.createdAt),
+        entryDate: entry.createdAt instanceof Date 
+          ? entry.createdAt 
+          : entry.createdAt 
+            ? new Date(entry.createdAt)
+            : new Date(),
         startDate,
         endDate,
         status,

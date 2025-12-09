@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db, users, contests, contestSubmissions, contestApplications, giveawayEntries, pointsTransactions } from '@/lib/db'
-import { eq, and, gte, count, sum, desc, sql, avg } from 'drizzle-orm'
+import { eq, and, gte, count, sum, desc, sql, avg, inArray } from 'drizzle-orm'
 import { requireBrand } from '@/lib/auth'
 import { successResponse, handleApiError } from '@/lib/api-response'
 
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       .from(contestSubmissions)
       .where(
         contestIds.length > 0 
-          ? sql`${contestSubmissions.contestId} = ANY(${sql.array(contestIds)})`
+          ? inArray(contestSubmissions.contestId, contestIds)
           : sql`1 = 0`
       )
 
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           contestIds.length > 0 
-            ? sql`${contestSubmissions.contestId} = ANY(${sql.array(contestIds)})`
+            ? inArray(contestSubmissions.contestId, contestIds)
             : sql`1 = 0`,
           gte(contestSubmissions.createdAt, startDate)
         )
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
       .from(contestApplications)
       .where(
         contestIds.length > 0 
-          ? sql`${contestApplications.contestId} = ANY(${sql.array(contestIds)})`
+          ? inArray(contestApplications.contestId, contestIds)
           : sql`1 = 0`
       )
 
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           contestIds.length > 0 
-            ? sql`${contestSubmissions.contestId} = ANY(${sql.array(contestIds)})`
+            ? inArray(contestSubmissions.contestId, contestIds)
             : sql`1 = 0`,
           sql`${contestSubmissions.score} IS NOT NULL`
         )
@@ -245,7 +245,7 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             contestIds.length > 0 
-              ? sql`${contestSubmissions.contestId} = ANY(${sql.array(contestIds)})`
+              ? inArray(contestSubmissions.contestId, contestIds)
               : sql`1 = 0`,
             gte(contestSubmissions.createdAt, weekStart),
             sql`${contestSubmissions.createdAt} < ${weekEnd}`
@@ -274,7 +274,7 @@ export async function GET(request: NextRequest) {
       .innerJoin(users, eq(contestApplications.userId, users.id))
       .where(
         contestIds.length > 0 
-          ? sql`${contestApplications.contestId} = ANY(${sql.array(contestIds)})`
+          ? inArray(contestApplications.contestId, contestIds)
           : sql`1 = 0`
       )
 
@@ -316,9 +316,11 @@ export async function GET(request: NextRequest) {
         engagementRate: Math.round(engagementRate * 10) / 10,
         averageRating: Math.round(averageRating * 10) / 10
       },
-      contests: contestsData.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
+      contests: contestsData.sort((a, b) => {
+        const aDate = a.createdAt ? new Date(a.createdAt as string | Date) : new Date(0);
+        const bDate = b.createdAt ? new Date(b.createdAt as string | Date) : new Date(0);
+        return bDate.getTime() - aDate.getTime();
+      }),
       performance: {
         topPerformingContest: topContest ? {
           title: topContest.title,

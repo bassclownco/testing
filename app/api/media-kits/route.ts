@@ -80,8 +80,7 @@ export async function POST(request: NextRequest) {
       title,
       type,
       {
-        description,
-        customization
+        description
       }
     )
 

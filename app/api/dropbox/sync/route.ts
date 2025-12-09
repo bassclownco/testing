@@ -144,11 +144,11 @@ export async function GET(request: NextRequest) {
       currentJob: latestJob ? {
         id: latestJob.id,
         status: latestJob.status,
-        progress: latestJob.totalFiles > 0 
-          ? (latestJob.processedFiles / latestJob.totalFiles) * 100 
+        progress: latestJob.totalFiles && latestJob.totalFiles > 0 && latestJob.processedFiles !== null
+          ? ((latestJob.processedFiles || 0) / latestJob.totalFiles) * 100
           : 0,
-        processedFiles: latestJob.processedFiles,
-        totalFiles: latestJob.totalFiles,
+        processedFiles: latestJob.processedFiles || 0,
+        totalFiles: latestJob.totalFiles || 0,
         failedFiles: latestJob.failedFiles
       } : null
     }, 'Sync status retrieved');

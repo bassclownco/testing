@@ -97,8 +97,7 @@ export async function POST(request: NextRequest) {
               refundedBy: user.id,
               refundReason: reason || 'requested_by_customer',
               refundAmount: refund.amount / 100 // Convert from cents
-            },
-            updatedAt: new Date()
+            }
           })
           .where(eq(paymentHistory.id, payment.id))
 

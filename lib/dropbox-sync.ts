@@ -96,7 +96,7 @@ export class DropboxSyncService {
           syncInterval: finalSettings.syncInterval,
           syncPaths: finalSettings.syncPaths,
           excludePatterns: finalSettings.excludePatterns,
-          maxFileSize: BigInt(finalSettings.maxFileSize),
+          maxFileSize: Number(finalSettings.maxFileSize),
           allowedFileTypes: finalSettings.allowedFileTypes,
           settings: {
             accessToken: this.config.accessToken,
@@ -118,7 +118,7 @@ export class DropboxSyncService {
           syncInterval: finalSettings.syncInterval,
           syncPaths: finalSettings.syncPaths,
           excludePatterns: finalSettings.excludePatterns,
-          maxFileSize: BigInt(finalSettings.maxFileSize),
+          maxFileSize: Number(finalSettings.maxFileSize),
           allowedFileTypes: finalSettings.allowedFileTypes,
           settings: {
             accessToken: this.config.accessToken,

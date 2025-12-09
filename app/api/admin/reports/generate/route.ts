@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
     // Generate report based on type
     switch (reportType) {
       case 'admin':
-        result = await reportsService.generateAdminReport(reportFilters, format);
+        // Map csv to excel for admin reports
+        const adminFormat = format === 'csv' ? 'excel' : format;
+        result = await reportsService.generateAdminReport(reportFilters, adminFormat as 'pdf' | 'excel');
         break;
       case 'user':
         const userReport = await reportsService.generateUserReport(reportFilters);
@@ -56,7 +58,9 @@ export async function POST(request: NextRequest) {
           : await reportsService.generateContestReportPDF(contestReport);
         break;
       default:
-        result = await reportsService.generateAdminReport(reportFilters, format);
+        // Map csv to excel for admin reports
+        const defaultFormat = format === 'csv' ? 'excel' : format;
+        result = await reportsService.generateAdminReport(reportFilters, defaultFormat as 'pdf' | 'excel');
     }
 
     return successResponse({
