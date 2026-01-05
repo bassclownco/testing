@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Update payment history
-    if (paymentIntentId) {
+    if (paymentIntentId && db) {
       const [payment] = await db
         .select()
         .from(paymentHistory)

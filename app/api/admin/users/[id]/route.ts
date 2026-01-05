@@ -16,6 +16,10 @@ export async function GET(
     
     const { id } = await params
 
+    if (!db) {
+      return errorResponse('Database connection unavailable', 500)
+    }
+
     const [user] = await db
       .select({
         id: users.id,
@@ -49,4 +53,6 @@ export async function GET(
     return handleApiError(error)
   }
 }
+
+
 

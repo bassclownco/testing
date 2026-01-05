@@ -32,6 +32,10 @@ export async function PATCH(
 
     const { role } = validation.data
 
+    if (!db) {
+      return errorResponse('Database connection unavailable', 500)
+    }
+
     // Check if user exists
     const [existingUser] = await db
       .select()
@@ -93,4 +97,6 @@ export async function PATCH(
     return handleApiError(error)
   }
 }
+
+
 

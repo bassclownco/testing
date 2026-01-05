@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // GET - Get audit logs
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin(request)
+    const user = await requireAdmin(request)
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId') || undefined

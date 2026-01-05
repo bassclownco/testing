@@ -192,7 +192,7 @@ export default function UserDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {user.activity.map((activity) => (
+                {user.activity.map((activity: any) => (
                   <div key={activity.id} className="flex items-center space-x-3 p-3 rounded-lg border">
                     <div className={`w-2 h-2 rounded-full ${
                       activity.type === 'contest_win' ? 'bg-green-500' :
@@ -221,7 +221,7 @@ export default function UserDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {user.contests.map((contest) => (
+                {user.contests.map((contest: any) => (
                   <div key={contest.id} className="flex items-center justify-between p-4 rounded-lg border">
                     <div>
                       <p className="font-medium">{contest.title}</p>
