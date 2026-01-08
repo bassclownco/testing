@@ -102,19 +102,20 @@ export async function GET(request: NextRequest) {
     const contestsList = await contestsQuery
 
     // Get total count for pagination
-    const [{ count }] = await db
+    const [totalCountResult] = await db
       .select({ count: count(contests.id) })
       .from(contests)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
 
-    const totalPages = Math.ceil(count / limit)
+    const totalCount = totalCountResult?.count ?? 0
+    const totalPages = Math.ceil(totalCount / limit)
 
     return successResponse({
       contests: contestsList,
       pagination: {
         page,
         limit,
-        total: count,
+        total: totalCount,
         totalPages,
         hasNext: page < totalPages,
         hasPrev: page > 1
