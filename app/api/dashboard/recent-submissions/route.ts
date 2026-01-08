@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       };
 
       const now = new Date();
-      const updated = new Date(sub.updatedAt);
+      const updated = sub.updatedAt ? new Date(sub.updatedAt) : new Date(sub.createdAt || now);
       const diffMs = now.getTime() - updated.getTime();
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDays = Math.floor(diffHours / 24);
