@@ -1,8 +1,12 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Users, Trophy, Calendar, DollarSign } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -14,68 +18,95 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 
-// Mock data for contests
-const contests = [
-  {
-    id: '1',
-    title: 'Bass Fishing Championship',
-    type: 'Video Contest',
-    status: 'active',
-    startDate: '2024-01-15',
-    endDate: '2024-02-15',
-    applications: 45,
-    submissions: 23,
-    prizePool: 2500,
-    brand: 'Bass Masters',
-  },
-  {
-    id: '2',
-    title: 'Fly Fishing Excellence',
-    type: 'Photo Contest',
-    status: 'judging',
-    startDate: '2024-01-01',
-    endDate: '2024-01-31',
-    applications: 67,
-    submissions: 67,
-    prizePool: 1500,
-    brand: 'River Pro',
-  },
-  {
-    id: '3',
-    title: 'Ice Fishing Adventure',
-    type: 'Video Contest',
-    status: 'completed',
-    startDate: '2023-12-01',
-    endDate: '2024-01-10',
-    applications: 89,
-    submissions: 78,
-    prizePool: 3000,
-    brand: 'Arctic Gear',
-  },
-  {
-    id: '4',
-    title: 'Beginner Guide Contest',
-    type: 'Educational',
-    status: 'draft',
-    startDate: '2024-02-01',
-    endDate: '2024-03-01',
-    applications: 0,
-    submissions: 0,
-    prizePool: 1000,
-    brand: 'Learn to Fish',
-  },
-];
+interface Contest {
+  id: string;
+  title: string;
+  category: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  prize: string;
+  currentParticipants: number;
+  maxParticipants: number;
+}
 
-export default function ContestsPage() {
+export default function AdminContestsPage() {
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    applications: 0,
+    prizePool: 0
+  });
+
+  useEffect(() => {
+    fetchContests();
+  }, []);
+
+  const fetchContests = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/contests?limit=100', {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch contests');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data?.contests) {
+        const contestsList = result.data.contests;
+        setContests(contestsList);
+        
+        // Calculate stats
+        const active = contestsList.filter((c: Contest) => c.status === 'open').length;
+        const prizePool = contestsList.reduce((sum: number, c: Contest) => {
+          const match = c.prize?.match(/\$?(\d+)/);
+          return sum + (match ? parseInt(match[1]) : 0);
+        }, 0);
+        
+        // Get total applications count (would need separate API call for accuracy)
+        const applicationsResponse = await fetch('/api/contests/stats', {
+          credentials: 'include'
+        });
+        let totalApplications = 0;
+        if (applicationsResponse.ok) {
+          const appsResult = await applicationsResponse.json();
+          totalApplications = appsResult.data?.totalApplications || 0;
+        }
+        
+        setStats({
+          total: contestsList.length,
+          active,
+          applications: totalApplications,
+          prizePool
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching contests:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'default';
+      case 'open': return 'default';
       case 'judging': return 'secondary';
       case 'completed': return 'outline';
       case 'draft': return 'destructive';
       default: return 'secondary';
     }
   };
+
+  const filteredContests = contests.filter(contest =>
+    contest.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    contest.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -100,8 +131,14 @@ export default function ContestsPage() {
             <Trophy className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
-            <p className="text-xs text-muted-foreground">+8 this month</p>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.total}</div>
+                <p className="text-xs text-muted-foreground">All contests</p>
+              </>
+            )}
           </CardContent>
         </Card>
         
@@ -111,8 +148,14 @@ export default function ContestsPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">Currently running</p>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.active}</div>
+                <p className="text-xs text-muted-foreground">Currently running</p>
+              </>
+            )}
           </CardContent>
         </Card>
         
@@ -122,8 +165,14 @@ export default function ContestsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,456</div>
-            <p className="text-xs text-muted-foreground">+156 this week</p>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.applications}</div>
+                <p className="text-xs text-muted-foreground">All applications</p>
+              </>
+            )}
           </CardContent>
         </Card>
         
@@ -133,8 +182,14 @@ export default function ContestsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$45,000</div>
-            <p className="text-xs text-muted-foreground">Across all contests</p>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">${stats.prizePool.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Across all contests</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -150,6 +205,8 @@ export default function ContestsPage() {
               <Input 
                 placeholder="Search contests..." 
                 className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <Button variant="outline" size="sm">
@@ -159,82 +216,105 @@ export default function ContestsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Contest</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Applications</TableHead>
-                <TableHead>Submissions</TableHead>
-                <TableHead>Prize Pool</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contests.map((contest) => (
-                <TableRow key={contest.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{contest.title}</div>
-                      <div className="text-sm text-gray-600">{contest.brand}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{contest.type}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusColor(contest.status)}>
-                      {contest.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{contest.startDate}</div>
-                      <div className="text-gray-500">to {contest.endDate}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{contest.applications}</TableCell>
-                  <TableCell>{contest.submissions}</TableCell>
-                  <TableCell>${contest.prizePool.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Contest
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          View Applications
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          View Submissions
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          Manage Judging
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          View Results
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          ) : filteredContests.length === 0 ? (
+            <div className="text-center py-12">
+              <Trophy className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No contests found</h3>
+              <p className="text-gray-600 mb-4">
+                {searchTerm ? 'Try adjusting your search terms.' : 'Get started by creating your first contest.'}
+              </p>
+              <Link href="/admin/contests/create">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Contest
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contest</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Participants</TableHead>
+                  <TableHead>Prize</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredContests.map((contest) => (
+                  <TableRow key={contest.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{contest.title}</div>
+                        <div className="text-sm text-gray-600">{contest.category}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{contest.category}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(contest.status)}>
+                        {contest.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{new Date(contest.startDate).toLocaleDateString()}</div>
+                        <div className="text-gray-500">to {new Date(contest.endDate).toLocaleDateString()}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {contest.currentParticipants || 0} / {contest.maxParticipants || '∞'}
+                    </TableCell>
+                    <TableCell>{contest.prize || 'TBD'}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/contests/${contest.id}`}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/contests/${contest.id}`}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Contest
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/contests/${contest.id}/submissions`}>
+                              View Submissions
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/contests/${contest.id}/collaborative-judging`}>
+                              Manage Judging
+                            </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

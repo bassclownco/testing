@@ -5,45 +5,12 @@ import Image from "next/image";
 import { useVideoModal } from "@/lib/video-modal-context";
 
 interface VideoItem {
-  id: number;
+  id: string;
   title: string;
   videoUrl: string;
+  thumbnailUrl?: string;
   thumbnail?: string; // Make thumbnail optional since we'll generate it
 }
-
-// Video data with new URLs and camel case titles
-const VIDEOS: VideoItem[] = [
-  {
-    id: 1,
-    title: "Bajio",
-    videoUrl: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/bajio-test.mp4",
-  },
-  {
-    id: 2,
-    title: "Stealth Batteries",
-    videoUrl: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/bass-clown-hero.mp4",
-  },
-  {
-    id: 3,
-    title: "F8 Lifted Tournament",
-    videoUrl: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/f8-lifted-tournement.mp4",
-  },
-  {
-    id: 4,
-    title: "WB Derby Reel",
-    videoUrl: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/wb-derby-reel.mp4",
-  },
-  {
-    id: 5,
-    title: "Wicked Bass Ghost Of Jighead Jones",
-    videoUrl: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/wicked-bass-ghost-of-jighead-jones.mp4",
-  },
-  {
-    id: 6,
-    title: "Wicked Bass Large Mouth",
-    videoUrl: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/wicked-bass-large-mouth.mp4",
-  },
-];
 
 // Custom hook for generating video thumbnails
 const useVideoThumbnail = (videoUrl: string) => {
@@ -200,6 +167,44 @@ const VideoThumbnail = ({ video }: { video: VideoItem }) => {
 
 export const VideoGrid = () => {
   const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchVideos();
+  }, []);
+
+  const fetchVideos = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/portfolio/videos?published=true', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch videos');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.videos) {
+        const transformedVideos: VideoItem[] = result.data.videos.map((video: any) => ({
+          id: video.id,
+          title: video.title,
+          videoUrl: video.videoUrl,
+          thumbnailUrl: video.thumbnailUrl
+        }));
+
+        setVideos(transformedVideos);
+      }
+    } catch (error) {
+      console.error('Error fetching videos:', error);
+      // Fallback to empty array - videos will just be empty
+      setVideos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -222,7 +227,7 @@ export const VideoGrid = () => {
         if (ref) observer.unobserve(ref);
       });
     };
-  }, []);
+  }, [videos]);
 
   const { openVideoModal } = useVideoModal();
 
@@ -235,14 +240,40 @@ export const VideoGrid = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <section className="bg-black py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="animate-pulse bg-gray-800 h-64 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (videos.length === 0) {
+    return (
+      <section className="bg-black py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center text-white">
+            <p className="text-xl">No videos available yet. Check back soon!</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <>
       <section className="bg-black py-16">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {VIDEOS.map((video, index) => (
+            {videos.map((video, index) => (
               <div
-                key={video.id}
+                key={video.id || index}
                 ref={(el) => {
                   videoRefs.current[index] = el;
                 }}

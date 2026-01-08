@@ -25,7 +25,9 @@ export const metadata: Metadata = {
   },
 };
 
-// Sample products data
+// REMOVED ALL FAKE DATA - Store shows Coming Soon overlay
+const products: any[] = []; // Empty array - no fake data
+/*
 const products = [
   {
     id: 1,
@@ -82,6 +84,7 @@ const products = [
     image: "/images/assets/bass-taking-picture.svg" // Placeholder image
   },
 ];
+*/
 
 const categories = [
   "All",
@@ -92,17 +95,7 @@ const categories = [
 
 export default function Store() {
   return (
-    <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative"> {/* Main background and text color */}
-      {/* Enhanced Coming Soon Overlay */}
-
-      <ComingSoonOverlay 
-        title="THE BASS CLOWN STORE"
-        description="We're stocking our tackle box with amazing merchandise! Our store will feature 
-        premium Bass Clown Co branded gear, fishing accessories, and exclusive content."
-        cta={<WaitlistForm />}
-      />
-
-      {/* Existing content remains unchanged */}
+    <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
       {/* Top Film Reel Border 
       <div className="w-full h-[22px] overflow-hidden">
         <Image 
@@ -209,7 +202,6 @@ export default function Store() {
         </div>
       </section>
       <CTASection />
-      */}
     </main>
   );
 }

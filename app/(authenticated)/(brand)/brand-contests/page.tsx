@@ -11,66 +11,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ContestCard from '@/components/contests/ContestCard';
 import { Search, Filter, Trophy, Calendar, Users, Plus, Edit, Eye, BarChart3 } from 'lucide-react';
 
-// Mock data for brand contests
-const mockBrandContests: Contest[] = [
-  {
-    id: '1',
-    title: 'Best Bass Fishing Video 2024',
-    description: 'Show us your best bass fishing skills in this exciting video contest.',
-    shortDescription: 'Submit your best bass fishing video for a chance to win premium fishing gear worth $2,000',
-    image: '/images/video-review-thumb-1.jpg',
-    prize: '$2,000 in Fishing Gear',
-    startDate: '2024-01-01',
-    endDate: '2024-03-31',
-    applicationDeadline: '2024-02-15',
-    submissionDeadline: '2024-03-15',
-    status: 'open',
-    category: 'Video Production',
-    requirements: [],
-    judges: ['John Fisher', 'Sarah Bass', 'Mike Angler'],
-    maxParticipants: 100,
-    currentParticipants: 45,
-    rules: 'All content must be original and shot within the contest period.',
-    submissionGuidelines: 'Upload your video in MP4 format, maximum 500MB.',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '2',
-    title: 'Photography Contest: Fishing Moments',
-    description: 'Capture the perfect fishing moment in this photography contest.',
-    shortDescription: 'Capture the perfect fishing moment and win professional photography equipment',
-    image: '/images/assets/bass-taking-picture.svg',
-    prize: '$1,500 Photography Equipment',
-    startDate: '2024-02-01',
-    endDate: '2024-04-30',
-    applicationDeadline: '2024-03-01',
-    submissionDeadline: '2024-04-15',
-    status: 'judging',
-    category: 'Photography',
-    requirements: [],
-    judges: ['Emma Photo', 'David Lens', 'Lisa Capture'],
-    maxParticipants: 75,
-    currentParticipants: 67,
-    rules: 'Photos must be taken during the contest period.',
-    submissionGuidelines: 'Submit high-resolution JPEG files, maximum 20MB each.',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-02-01T00:00:00Z',
-    updatedAt: '2024-02-01T00:00:00Z'
-  }
-];
-
 export default function BrandContestsPage() {
-  const [contests, setContests] = useState<Contest[]>(mockBrandContests);
-  const [filteredContests, setFilteredContests] = useState<Contest[]>(mockBrandContests);
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [filteredContests, setFilteredContests] = useState<Contest[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchContests() {
+      try {
+        const response = await fetch('/api/brand/contests');
+        const data = await response.json();
+        if (data.success) {
+          setContests(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch brand contests:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchContests();
+  }, []);
 
   useEffect(() => {
     filterContests();
-  }, [searchTerm, selectedStatus, activeTab]);
+  }, [searchTerm, selectedStatus, activeTab, contests]);
 
   const filterContests = () => {
     let filtered = contests;

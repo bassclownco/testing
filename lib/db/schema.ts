@@ -636,4 +636,22 @@ export const brandCollaborationUniqueIdx = uniqueIndex('brand_collaboration_uniq
 
 export const brandContractUniqueIdx = uniqueIndex('brand_contract_unique_idx').on(
   brandContracts.collaborationId
-) 
+)
+
+// Portfolio Videos table - showcase commercials and portfolio work
+export const portfolioVideos = pgTable('portfolio_videos', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  videoUrl: text('video_url').notNull(),
+  thumbnailUrl: text('thumbnail_url'),
+  category: varchar('category', { length: 100 }).default('commercial'), // commercial, reel, testimonial, etc.
+  clientName: varchar('client_name', { length: 255 }),
+  featured: boolean('featured').default(false), // for homepage/featured section
+  featuredOrder: integer('featured_order').default(0), // order in featured section
+  displayOrder: integer('display_order').default(0), // order in portfolio grid
+  published: boolean('published').default(true),
+  views: integer('views').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+}) 

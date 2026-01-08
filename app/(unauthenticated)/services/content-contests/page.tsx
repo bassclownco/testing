@@ -1,4 +1,6 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { useState, useEffect } from 'react';
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -11,17 +13,69 @@ import FancyBurst from '@/components/icons/FancyBurst';
 import FilmSpoolSimplified from '@/components/icons/FilmSpoolSimplified';
 import FishChaseHero from '@/components/FishChaseHero';
 import WeatheredBurst from '@/components/icons/WeatheredBurst';
-
-
-export const metadata: Metadata = {
-  title: 'Content Contests',
-  description: 'Enter fishing video contests, win prizes, and showcase your best catches with Bass Clown Co.',
-  alternates: {
-    canonical: 'https://bassclown.com/services/content-contests',
-  },
-};
+import { Contest } from '@/lib/types';
 
 export default function ContentContests() {
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchContests();
+  }, []);
+
+  const fetchContests = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/contests?limit=4&status=open', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch contests');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.contests) {
+        const transformedContests: Contest[] = result.data.contests.map((contest: any) => ({
+          id: contest.id,
+          title: contest.title,
+          description: contest.description || '',
+          shortDescription: contest.shortDescription || contest.description?.substring(0, 100) || '',
+          image: contest.image || '/images/assets/bass-clown-co-fish-chase.png',
+          prize: contest.prize || 'Prize TBD',
+          startDate: contest.startDate ? new Date(contest.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          endDate: contest.endDate ? new Date(contest.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          applicationDeadline: contest.applicationDeadline ? new Date(contest.applicationDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          submissionDeadline: contest.submissionDeadline ? new Date(contest.submissionDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          status: contest.status || 'open',
+          category: contest.category || 'General',
+          requirements: Array.isArray(contest.requirements) ? contest.requirements :
+                        typeof contest.requirements === 'object' && contest.requirements !== null
+                          ? Object.values(contest.requirements) as string[]
+                          : [],
+          judges: Array.isArray(contest.judges) ? contest.judges :
+                  typeof contest.judges === 'object' && contest.judges !== null
+                    ? Object.values(contest.judges) as string[]
+                    : [],
+          maxParticipants: contest.maxParticipants || 100,
+          currentParticipants: contest.currentParticipants || 0,
+          rules: contest.rules || '',
+          submissionGuidelines: contest.submissionGuidelines || '',
+          createdBy: contest.createdBy || contest.creatorName || 'Bass Clown Co',
+          createdAt: contest.createdAt ? new Date(contest.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: contest.updatedAt ? new Date(contest.updatedAt).toISOString() : new Date().toISOString()
+        }));
+
+        setContests(transformedContests);
+      }
+    } catch (error) {
+      console.error('Error fetching contests:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="flex flex-col min-h-screen bg-[#121212]">
       {/* Hero Section */}
@@ -31,40 +85,53 @@ export default function ContentContests() {
       {/* Contest Grid */}
       <section className="py-8 bg-[#121212]">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Contest 1 */}
-            <ContestVideoThumbnail
-              title="Bass Fishing Tournament"
-              subtitle="Submit your best catch"
-              imageSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/photos/bass-fishing-tournement.jpeg"
-              imageAlt="Fishing Contest"
-            />
-
-            {/* Contest 2 */}
-            <ContestVideoThumbnail
-              title="Lure Showcase"
-              subtitle="Show off your gear"
-              imageSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/photos/lure-showcase.jpg"
-              imageAlt="Fishing Contest"
-            />
-
-            {/* Contest 3 */}
-            <ContestVideoThumbnail
-              title="Fishing Story Contest"
-              subtitle="Tell us your best tale"
-              imageSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/photos/fishing-story-contest.jpeg"
-              imageAlt="Fishing Contest"
-            />
-
-            {/* Contest 4 */}
-            <ContestVideoThumbnail
-              title="Video Technique Contest"
-              subtitle="Show your fishing skills"
-              imageSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/photos/video-technique-contest.jpeg"
-              imageAlt="Fishing Contest"
-            />
-
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="animate-pulse bg-gray-800 h-64 rounded"></div>
+              ))}
+            </div>
+          ) : contests.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {contests.slice(0, 4).map((contest) => (
+                <ContestVideoThumbnail
+                  key={contest.id}
+                  title={contest.title}
+                  subtitle={contest.shortDescription || contest.description?.substring(0, 60) || 'Enter now!'}
+                  imageSrc={contest.image || '/images/assets/bass-clown-co-fish-chase.png'}
+                  imageAlt={contest.title}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Fallback to default contests if none in database */}
+              <ContestVideoThumbnail
+                title="Bass Fishing Tournament"
+                subtitle="Submit your best catch"
+                imageSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/photos/bass-fishing-tournement.jpeg"
+                imageAlt="Fishing Contest"
+              />
+              <ContestVideoThumbnail
+                title="Lure Showcase"
+                subtitle="Show off your gear"
+                imageSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/photos/lure-showcase.jpg"
+                imageAlt="Fishing Contest"
+              />
+              <ContestVideoThumbnail
+                title="Fishing Story Contest"
+                subtitle="Tell us your best tale"
+                imageSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/photos/fishing-story-contest.jpeg"
+                imageAlt="Fishing Contest"
+              />
+              <ContestVideoThumbnail
+                title="Video Technique Contest"
+                subtitle="Show your fishing skills"
+                imageSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/photos/video-technique-contest.jpeg"
+                imageAlt="Fishing Contest"
+              />
+            </div>
+          )}
         </div>
       </section>
 

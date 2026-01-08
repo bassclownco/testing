@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,40 +17,27 @@ interface Project {
 }
 
 export const RecentProjects = () => {
-  const projects: Project[] = [
-    {
-      id: '1',
-      title: 'Rapala Lure Review Series',
-      status: 'In Progress',
-      lastUpdated: '2 hours ago',
-      type: 'Product Review',
-      progress: 75
-    },
-    {
-      id: '2',
-      title: 'Spring Bass Tournament Highlights',
-      status: 'Under Review',
-      lastUpdated: '1 day ago',
-      type: 'Contest Entry',
-      progress: 100
-    },
-    {
-      id: '3',
-      title: 'Fishing Gear Brand Commercial',
-      status: 'Completed',
-      lastUpdated: '3 days ago',
-      type: 'Brand Video',
-      progress: 100
-    },
-    {
-      id: '4',
-      title: 'Lake Fishing Tips Video',
-      status: 'Draft',
-      lastUpdated: '1 week ago',
-      type: 'Product Review',
-      progress: 25
+  const router = useRouter();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const response = await fetch('/api/dashboard/recent-submissions');
+        const data = await response.json();
+        if (data.success) {
+          setProjects(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch recent projects:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+
+    fetchProjects();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -69,7 +58,12 @@ export const RecentProjects = () => {
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {projects.map((project) => (
+        {loading ? (
+          <div className="text-gray-400 text-center py-4">Loading...</div>
+        ) : projects.length === 0 ? (
+          <div className="text-gray-400 text-center py-4">No recent projects</div>
+        ) : (
+          projects.map((project) => (
           <div key={project.id} className="flex items-center justify-between p-4 bg-[#1A1A1A] rounded-lg">
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
@@ -106,7 +100,8 @@ export const RecentProjects = () => {
               </Button>
             </div>
           </div>
-        ))}
+          ))
+        )}
       </CardContent>
     </Card>
   );

@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,44 +18,27 @@ interface Contest {
 }
 
 export const ContestStatus = () => {
-  const contests: Contest[] = [
-    {
-      id: '1',
-      title: 'Best Bass Fishing Technique 2024',
-      deadline: 'March 15, 2024',
-      prize: '$1,000',
-      participants: 342,
-      status: 'Active',
-      submitted: false
-    },
-    {
-      id: '2',
-      title: 'Spring Fishing Adventure',
-      deadline: 'March 20, 2024',
-      prize: '$500',
-      participants: 156,
-      status: 'Submitted',
-      submitted: true
-    },
-    {
-      id: '3',
-      title: 'Tackle Box Setup Challenge',
-      deadline: 'March 25, 2024',
-      prize: '$750',
-      participants: 89,
-      status: 'Active',
-      submitted: false
-    },
-    {
-      id: '4',
-      title: 'Winter Fishing Stories',
-      deadline: 'February 28, 2024',
-      prize: '$300',
-      participants: 234,
-      status: 'Judging',
-      submitted: true
+  const router = useRouter();
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchContests() {
+      try {
+        const response = await fetch('/api/dashboard/contests');
+        const data = await response.json();
+        if (data.success) {
+          setContests(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch contests:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+
+    fetchContests();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -77,8 +62,13 @@ export const ContestStatus = () => {
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {contests.map((contest) => (
+        {loading ? (
+          <div className="text-gray-400 text-center py-4">Loading...</div>
+        ) : contests.length === 0 ? (
+          <div className="text-gray-400 text-center py-4">No active contests</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {contests.map((contest) => (
             <div key={contest.id} className="p-4 bg-[#1A1A1A] rounded-lg">
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-medium text-white text-sm">{contest.title}</h3>
@@ -113,14 +103,16 @@ export const ContestStatus = () => {
                     size="sm" 
                     className="w-full bg-red-600 hover:bg-red-700 text-white"
                     disabled={contest.status === 'Closed'}
+                    onClick={() => router.push(`/contests/${contest.id}`)}
                   >
                     {contest.status === 'Closed' ? 'Contest Closed' : 'Submit Entry'}
                   </Button>
                 )}
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -7,112 +7,74 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import ContestCard from '@/components/contests/ContestCard';
-import { Search, Filter, Trophy, Calendar, Users, DollarSign, Tag, ArrowRight, Video, Camera, Edit, Star } from 'lucide-react';
+import { Search, Trophy, ArrowRight, Video, Camera, Edit } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
-import BassFishy from '@/components/BassFishy';
-import Bubbles from '@/components/Bubbles';
-import WaitlistForm from '@/components/WaitlistForm';
-import ComingSoonOverlay from '@/components/ComingSoonOverlay';
-
-// Mock data for content contests
-const mockContentContests: Contest[] = [
-  {
-    id: '1',
-    title: 'Best Fishing Video Tutorial',
-    description: 'Create an educational video tutorial showcasing your fishing techniques, tips, or gear reviews. Help fellow anglers improve their skills while competing for amazing prizes!',
-    shortDescription: 'Create educational fishing content and win professional video equipment',
-    image: '/images/video-review-thumb-1.jpg',
-    prize: '$1,500 Video Equipment Package',
-    startDate: '2024-01-01',
-    endDate: '2024-03-31',
-    applicationDeadline: '2024-02-15',
-    submissionDeadline: '2024-03-15',
-    status: 'open',
-    category: 'Video Production',
-    requirements: [
-      'Original tutorial content only',
-      'Minimum 5 minutes, maximum 15 minutes',
-      'High definition (1080p or higher)',
-      'Clear audio and narration',
-      'Educational value for fishing community'
-    ],
-    judges: ['Content Creator Pro', 'Fishing Instructor', 'Video Production Expert'],
-    maxParticipants: 50,
-    currentParticipants: 23,
-    rules: 'Content must be original and educational. No copyrighted material without permission. Judged on educational value, video quality, and engagement.',
-    submissionGuidelines: 'Upload video in MP4 format, maximum 1GB. Include detailed description of techniques taught and target audience.',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '2',
-    title: 'Fishing Photography Challenge',
-    description: 'Capture stunning fishing moments, landscapes, and wildlife in this photography contest. Show us the beauty of fishing through your lens.',
-    shortDescription: 'Photography contest for fishing and outdoor enthusiasts',
-    image: '/images/video-review-thumb-1.jpg',
-    prize: '$1,000 Photography Equipment',
-    startDate: '2024-02-01',
-    endDate: '2024-04-30',
-    applicationDeadline: '2024-03-01',
-    submissionDeadline: '2024-04-15',
-    status: 'open',
-    category: 'Photography',
-    requirements: [
-      'Original photography only',
-      'High resolution (minimum 2000x2000px)',
-      'Fishing or outdoor theme',
-      'Minimal post-processing allowed',
-      'Submit up to 5 photos'
-    ],
-    judges: ['Professional Photographer', 'Outdoor Magazine Editor', 'Wildlife Photographer'],
-    maxParticipants: 100,
-    currentParticipants: 67,
-    rules: 'Photos must be original and taken within contest period. Light editing allowed but no heavy manipulation. Judged on composition, technical quality, and storytelling.',
-    submissionGuidelines: 'Upload in JPEG format, maximum 10MB per image. Include brief description of location and story behind each photo.',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-02-01T00:00:00Z',
-    updatedAt: '2024-02-01T00:00:00Z'
-  },
-  {
-    id: '3',
-    title: 'Fishing Blog Writing Contest',
-    description: 'Write compelling articles about fishing experiences, techniques, or gear reviews. Share your knowledge and stories with the fishing community.',
-    shortDescription: 'Write engaging fishing articles and win writing opportunities',
-    image: '/images/video-review-thumb-1.jpg',
-    prize: '$500 + Publishing Opportunity',
-    startDate: '2024-01-15',
-    endDate: '2024-03-15',
-    applicationDeadline: '2024-02-01',
-    submissionDeadline: '2024-03-01',
-    status: 'open',
-    category: 'Writing',
-    requirements: [
-      'Original written content only',
-      'Minimum 1,000 words',
-      'Fishing-related topic',
-      'Proper grammar and structure',
-      'Include relevant images if available'
-    ],
-    judges: ['Fishing Magazine Editor', 'Content Writer', 'Fishing Expert'],
-    maxParticipants: 75,
-    currentParticipants: 34,
-    rules: 'Content must be original and well-researched. Proper citations required for any references. Judged on writing quality, originality, and value to fishing community.',
-    submissionGuidelines: 'Submit in PDF or Word format. Include title, author bio, and any supporting images. Ensure content is well-structured with clear headings.',
-    createdBy: 'Bass Clown Co',
-    createdAt: '2024-01-15T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z'
-  }
-];
 
 export default function ContentContestsPage() {
-  const [contests, setContests] = useState<Contest[]>(mockContentContests);
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+
+  useEffect(() => {
+    fetchContests();
+  }, []);
+
+  const fetchContests = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/contests?limit=100&status=open', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch contests');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.contests) {
+        const transformedContests: Contest[] = result.data.contests.map((contest: any) => ({
+          id: contest.id,
+          title: contest.title,
+          description: contest.description || '',
+          shortDescription: contest.shortDescription || contest.description?.substring(0, 100) || '',
+          image: contest.image || '/images/assets/bass-clown-co-fish-chase.png',
+          prize: contest.prize || 'Prize TBD',
+          startDate: contest.startDate ? new Date(contest.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          endDate: contest.endDate ? new Date(contest.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          applicationDeadline: contest.applicationDeadline ? new Date(contest.applicationDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          submissionDeadline: contest.submissionDeadline ? new Date(contest.submissionDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          status: contest.status || 'open',
+          category: contest.category || 'General',
+          requirements: Array.isArray(contest.requirements) ? contest.requirements :
+                        typeof contest.requirements === 'object' && contest.requirements !== null
+                          ? Object.values(contest.requirements) as string[]
+                          : [],
+          judges: Array.isArray(contest.judges) ? contest.judges :
+                  typeof contest.judges === 'object' && contest.judges !== null
+                    ? Object.values(contest.judges) as string[]
+                    : [],
+          maxParticipants: contest.maxParticipants || 100,
+          currentParticipants: contest.currentParticipants || 0,
+          rules: contest.rules || '',
+          submissionGuidelines: contest.submissionGuidelines || '',
+          createdBy: contest.createdBy || contest.creatorName || 'Bass Clown Co',
+          createdAt: contest.createdAt ? new Date(contest.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: contest.updatedAt ? new Date(contest.updatedAt).toISOString() : new Date().toISOString()
+        }));
+
+        setContests(transformedContests);
+      }
+    } catch (error) {
+      console.error('Error fetching contests:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredContests = contests.filter(contest => {
     const matchesSearch = contest.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -128,17 +90,7 @@ export default function ContentContestsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50">
-      {/* Enhanced Coming Soon Overlay */}
 
-
-      <ComingSoonOverlay 
-        title="CONTENT CONTESTS"
-        description="We're setting up an epic creative battleground! Our content contests will connect talented creators 
-        with fishing brands for amazing collaborations and prizes."
-        cta={<WaitlistForm />}
-      />
-
-      {/* Existing content remains unchanged 
       <div className="container mx-auto px-4 py-8">
 
         <div className="text-center mb-12">
@@ -276,7 +228,6 @@ export default function ContentContestsPage() {
           </Card>
         </div>
       </div>
-      */}
     </div>
   );
 }

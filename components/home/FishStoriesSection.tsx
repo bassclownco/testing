@@ -15,8 +15,49 @@ import {
 import FilmSpoolSimplified from "../icons/FilmSpoolSimplified";
 import WeatheredBurst from "../icons/WeatheredBurst";
 
+interface FeaturedVideo {
+  id: string;
+  title: string;
+  description?: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  clientName?: string;
+}
+
 export const FishStoriesSection = () => {
   const sectionRef = useRef<HTMLElement>(null);
+  const [featuredVideos, setFeaturedVideos] = useState<FeaturedVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturedVideos();
+  }, []);
+
+  const fetchFeaturedVideos = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/portfolio/videos?featured=true&limit=3&published=true', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch featured videos');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.videos) {
+        setFeaturedVideos(result.data.videos);
+      }
+    } catch (error) {
+      console.error('Error fetching featured videos:', error);
+      // Fallback to empty array - will show empty state
+      setFeaturedVideos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -35,7 +76,7 @@ export const FishStoriesSection = () => {
     return () => {
       elements.forEach((element) => observer.unobserve(element));
     };
-  }, []);
+  }, [featuredVideos]);
 
   return (
     <section 
@@ -83,151 +124,72 @@ export const FishStoriesSection = () => {
         </div>
         
         {/* Three Content Blocks */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-8 justify-between items-between">
-          {/* Block 1 - The Keeper */}
-          <div className="fish-story opacity-0 translate-y-8 flex flex-col justify-between h-full">
-            <div className="flex justify-center mb-4 md:mb-6">
-              <div className="relative" style={{ transform: "rotate(2deg)" }}>
-                {/* Polaroid frame */}
-                <div className="transform scale-90 md:scale-100">
-                  <PolaroidFrame
-                    videoSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/bajio-test.mp4"
-                    videoAlt="Bajio"
-                    caption="Bajio Sunglasses"
-                    bgColor="bg-polaroid"
-                    rotation="2deg"
-                  >
-                    {/* Play button */}
-                    <div 
-                      className="bg-red-600 rounded-full p-2 md:p-3 cursor-pointer hover:bg-red-700 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white md:w-6 md:h-6">
-                        <polygon points="5 3 19 12 5 21 5 3" fill="white"></polygon>
-                      </svg>
-                    </div>
-                  </PolaroidFrame>
-                </div>
-              </div>
-            </div>
-            
-            <div className="text-center px-2 md:px-4">
-              <h3 className="text-xl md:text-2xl font-bold text-white mb-3">Bajio Sunglasses</h3>
-              <p className="text-white mb-4 md:mb-6 text-sm md:text-base">
-                Experience the thrill of the chase with Bajio Sunglasses. This commercial showcases the perfect blend of adventure, humor, and craftmanship.
-              </p>
-            </div>
-            <div className="flex flex-col items-center gap-4 md:gap-8 justify-end h-full">
-              <div className="flex justify-center items-center">
-                <Button className="bg-red-600 hover:bg-red-700 text-white px-4 md:px-6 py-2 rounded-none relative text-sm md:text-base">
-                  LEARN MORE
-                </Button>
-              </div>
-              {/* Fishing reel icon */}
-              <div className="flex justify-center">
-                <FilmSpoolSimplified className="text-black" size={96} />
-              </div>
-            </div>
+        {loading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-8 justify-between items-between">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse bg-gray-800 h-96 rounded"></div>
+            ))}
           </div>
-          
-          {/* Block 2 - The Net */}
-          <div className="fish-story opacity-0 translate-y-8 flex flex-col justify-between h-full lg:border-r-2 lg:border-dotted lg:border-l-2">
-            <div className="flex justify-center mb-4 md:mb-6">
-              <div className="relative" style={{ transform: "rotate(-3deg)" }}>
-                {/* Polaroid frame */}
-                <div className="transform scale-90 md:scale-100">
-                  <PolaroidFrame
-                    videoSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/wicked-bass-large-mouth.mp4"
-                    videoAlt="Wicked Bass Large Mouth"
-                    caption="Wicked Bass Large Mouth"
-                    bgColor="bg-polaroid"
-                    rotation="-3deg"
-                    >
-                    {/* Play button */}
-                    <div 
-                      className="bg-red-600 rounded-full p-2 md:p-3 cursor-pointer hover:bg-red-700 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white md:w-6 md:h-6">
-                        <polygon points="5 3 19 12 5 21 5 3" fill="white"></polygon>
-                      </svg>
+        ) : featuredVideos.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-8 justify-between items-between">
+            {featuredVideos.slice(0, 3).map((video, index) => {
+              const rotations = ['2deg', '-3deg', '3deg'];
+              const rotation = rotations[index] || '0deg';
+              return (
+                <div key={video.id} className={`fish-story opacity-0 translate-y-8 flex flex-col justify-between h-full ${index === 1 ? 'lg:border-r-2 lg:border-dotted lg:border-l-2' : ''}`}>
+                  <div className="flex justify-center mb-4 md:mb-6">
+                    <div className="relative" style={{ transform: `rotate(${rotation})` }}>
+                      {/* Polaroid frame */}
+                      <div className="transform scale-90 md:scale-100">
+                        <PolaroidFrame
+                          videoSrc={video.videoUrl}
+                          videoAlt={video.title}
+                          caption={video.clientName || video.title}
+                          bgColor="bg-polaroid"
+                          rotation={rotation}
+                        >
+                          {/* Play button */}
+                          <div 
+                            className="bg-red-600 rounded-full p-2 md:p-3 cursor-pointer hover:bg-red-700 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white md:w-6 md:h-6">
+                              <polygon points="5 3 19 12 5 21 5 3" fill="white"></polygon>
+                            </svg>
+                          </div>
+                        </PolaroidFrame>
+                      </div>
                     </div>
-                  </PolaroidFrame>
-                </div>
-              </div>
-            </div>
-            
-            <div className="text-center px-2 md:px-4">
-              <h3 className="text-xl md:text-2xl font-bold text-white mb-3">You'll probably go in the water again.</h3>
-              <p className="text-white mb-4 md:mb-6 text-sm md:text-base">
-                You know what they say about those with a large mouth...<br/> Large jaws.<br/> Bass fishing is a sport that is known for its excitement and thrill, now you know why!
-              </p>
-            </div>
-            <div className="flex flex-col items-center gap-4 md:gap-8 justify-end h-full">
-              <div className="flex justify-center items-center">
-                <Button className="bg-red-600 hover:bg-red-700 text-white px-4 md:px-6 py-2 rounded-none relative text-sm md:text-base">
-                  LEARN MORE
-                </Button>
-              </div>
-              {/* Fishing reel icon */}
-              <div className="flex justify-center">
-                <FilmSpoolSimplified className="text-black" size={96} />
-              </div>
-            </div>
-          </div>
-          
-          {/* Block 3 - The Kicker */}
-          <div className="fish-story opacity-0 translate-y-8 flex flex-col justify-between h-full">
-            <div className="flex justify-center mb-4 md:mb-6">
-              <div className="relative" style={{ transform: "rotate(3deg)" }}>
-                {/* Polaroid frame */}
-                <div className="transform scale-90 md:scale-100">
-                  <PolaroidFrame
-                    videoSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/sunline.mp4"
-                    videoAlt="Sunline"
-                    caption="Sunline Premium Fishing Line"
-                    bgColor="bg-polaroid"
-                    rotation="3deg"
-                    >
-                    {/* Play button */}
-                    <div 
-                      className="bg-red-600 rounded-full p-2 md:p-3 cursor-pointer hover:bg-red-700 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white md:w-6 md:h-6">
-                        <polygon points="5 3 19 12 5 21 5 3" fill="white"></polygon>
-                      </svg>
+                  </div>
+                  
+                  <div className="text-center px-2 md:px-4">
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-3">{video.title}</h3>
+                    <p className="text-white mb-4 md:mb-6 text-sm md:text-base">
+                      {video.description || 'Bass Clown Co. Production'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center gap-4 md:gap-8 justify-end h-full">
+                    <div className="flex justify-center items-center">
+                      <Button className="bg-red-600 hover:bg-red-700 text-white px-4 md:px-6 py-2 rounded-none relative text-sm md:text-base">
+                        LEARN MORE
+                      </Button>
                     </div>
-                  </PolaroidFrame>
+                    {/* Fishing reel icon */}
+                    <div className="flex justify-center">
+                      <FilmSpoolSimplified className="text-black" size={96} />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            
-            <div className="text-center px-2 md:px-4">
-              <h3 className="text-xl md:text-2xl font-bold text-white mb-3">Sunline Premium Fishing Line</h3>
-              <p className="text-white mb-4 md:mb-6 text-sm md:text-base">
-                Sunline Premium Fishing Line is a premium fishing line that is made with the best materials and is designed to last, with different lines for different types of fishing and scenarios.
-              </p>
-            </div>
-            <div className="flex flex-col items-center gap-4 md:gap-8 justify-end h-full">
-              <div className="flex justify-center items-center">
-                <Button className="bg-red-600 hover:bg-red-700 text-white px-4 md:px-6 py-2 rounded-none relative text-sm md:text-base">
-                  LEARN MORE
-                </Button>
-              </div>
-              {/* Fishing reel icon */}
-              <div className="flex justify-center">
-                <FilmSpoolSimplified className="text-black" size={96} />
-              </div>
-            </div>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className="text-center text-white py-12">
+            <p className="text-xl">Featured videos coming soon!</p>
+          </div>
+        )}
       </div>
 
       {/* Video Modals */}

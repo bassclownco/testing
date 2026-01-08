@@ -25,100 +25,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// Mock contest data - in real app would fetch from API
-const mockContest: Contest = {
-  id: '1',
-  title: 'Ultimate Bass Fishing Challenge 2024',
-  description: 'Show us your best bass fishing techniques and win amazing prizes! This contest is all about demonstrating skill, creativity, and passion for bass fishing.',
-  shortDescription: 'Showcase your bass fishing skills in our biggest contest yet',
-  image: '/images/contest-hero.jpg',
-  prize: '$5,000 in premium fishing gear + featured video placement',
-  startDate: '2024-01-15T00:00:00Z',
-  endDate: '2024-03-15T23:59:59Z',
-  applicationDeadline: '2024-02-15T23:59:59Z',
-  submissionDeadline: '2024-03-10T23:59:59Z',
-  status: 'open',
-  category: 'Video Contest',
-  requirements: [
-    'Must be 18+ years old',
-    'Original content only',
-    'Video must be 3-10 minutes long',
-    'HD quality (1080p minimum)',
-    'Must include clear audio'
-  ],
-  judges: ['John Fisher', 'Sarah Bass', 'Mike Angler'],
-  maxParticipants: 100,
-  currentParticipants: 45,
-  rules: `Contest Rules and Regulations:
-
-1. ELIGIBILITY
-   - Open to all participants 18 years or older
-   - Must be legal resident of participating countries
-   - One entry per person
-
-2. SUBMISSION REQUIREMENTS
-   - Original video content only
-   - All footage must be shot during contest period
-   - No copyrighted music without proper licensing
-   - Video must be 2-10 minutes in length
-   - HD quality required (1080p minimum)
-
-3. JUDGING CRITERIA
-   - Technical skill and fishing technique (30%)
-   - Video quality and production (25%)
-   - Creativity and storytelling (25%)
-   - Educational value (20%)
-
-4. PRIZES
-   - First Place: $2,000 in premium fishing gear
-   - Second Place: $500 gift card
-   - Third Place: $250 gift card
-   - People's Choice: $100 gift card
-
-5. RIGHTS AND USAGE
-   - Bass Clown Co retains rights to use winning entries for promotional purposes
-   - Participants retain original copyright of their work
-   - By submitting, you grant Bass Clown Co license to use your content
-
-6. DISQUALIFICATION
-   - Plagiarism or stolen content
-   - Violation of submission guidelines
-   - Inappropriate or offensive content
-   - Late submissions will not be accepted`,
-  submissionGuidelines: `Video Submission Guidelines:
-
-Technical Requirements:
-• Format: MP4, MOV, or AVI
-• Resolution: 1080p minimum (4K preferred)
-• Frame Rate: 24fps, 30fps, or 60fps
-• Audio: Clear, synchronized audio required
-• Duration: 2-10 minutes
-• File Size: Maximum 500MB
-
-Content Requirements:
-• Original footage shot during contest period
-• Demonstrate bass fishing techniques or skills
-• Include clear narration or captions
-• Show respect for environment and fishing regulations
-• Must be family-friendly content
-
-Submission Process:
-• Upload your video file using the form below
-• Provide a compelling title and description
-• Include relevant tags for discoverability
-• Add any additional notes for judges
-• Confirm submission before deadline`,
-  createdBy: 'admin-id',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z'
-};
-
 export default function ContestSubmissionPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
   const [contest, setContest] = useState<Contest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState(false);
   const [hasExistingSubmission, setHasExistingSubmission] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState<{
@@ -133,39 +46,70 @@ export default function ContestSubmissionPage() {
   useEffect(() => {
     const fetchContestAndStatus = async () => {
       setLoading(true);
+      setError(null);
       try {
         // Fetch contest details
         const contestResponse = await fetch(`/api/contests/${params.id}`);
-        if (contestResponse.ok) {
-          const contestData = await contestResponse.json();
-          setContest(contestData.data);
+        if (!contestResponse.ok) {
+          throw new Error('Failed to fetch contest');
+        }
+        const contestResult = await contestResponse.json();
+        if (contestResult.success && contestResult.data) {
+          const contestData = contestResult.data;
+          setContest({
+            id: contestData.id,
+            title: contestData.title,
+            description: contestData.description || '',
+            shortDescription: contestData.shortDescription || contestData.description?.substring(0, 100) || '',
+            image: contestData.image || '/images/assets/bass-clown-co-fish-chase.png',
+            prize: contestData.prize || 'Prize TBD',
+            startDate: contestData.startDate ? new Date(contestData.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            endDate: contestData.endDate ? new Date(contestData.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            applicationDeadline: contestData.applicationDeadline ? new Date(contestData.applicationDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            submissionDeadline: contestData.submissionDeadline ? new Date(contestData.submissionDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            status: contestData.status || 'open',
+            category: contestData.category || 'General',
+            requirements: Array.isArray(contestData.requirements) ? contestData.requirements : 
+                          typeof contestData.requirements === 'object' && contestData.requirements !== null 
+                            ? Object.values(contestData.requirements) as string[]
+                            : [],
+            judges: Array.isArray(contestData.judges) ? contestData.judges : 
+                    typeof contestData.judges === 'object' && contestData.judges !== null
+                      ? Object.values(contestData.judges) as string[]
+                      : [],
+            maxParticipants: contestData.maxParticipants || 100,
+            currentParticipants: contestData.currentParticipants || 0,
+            rules: contestData.rules || '',
+            submissionGuidelines: contestData.submissionGuidelines || '',
+            createdBy: contestData.createdBy || contestData.creatorName || 'Bass Clown Co',
+            createdAt: contestData.createdAt ? new Date(contestData.createdAt).toISOString() : new Date().toISOString(),
+            updatedAt: contestData.updatedAt ? new Date(contestData.updatedAt).toISOString() : new Date().toISOString()
+          });
         } else {
-          setContest(mockContest); // Fallback to mock data
+          throw new Error('Contest not found');
         }
 
         // Fetch submission status
         const statusResponse = await fetch(`/api/contests/${params.id}/submit`);
         if (statusResponse.ok) {
-          const statusData = await statusResponse.json();
-          setSubmissionStatus(statusData.data);
-          setIsApproved(statusData.data.canSubmit);
-          setHasExistingSubmission(!!statusData.data.submission);
-        } else {
-          // Mock status for demo
-          setIsApproved(true);
-          setHasExistingSubmission(false);
+          const statusResult = await statusResponse.json();
+          if (statusResult.success && statusResult.data) {
+            setSubmissionStatus(statusResult.data);
+            setIsApproved(statusResult.data.canSubmit || false);
+            setHasExistingSubmission(!!statusResult.data.submission);
+          }
         }
-      } catch (error) {
-        console.error('Error fetching contest data:', error);
-        setContest(mockContest); // Fallback to mock data
-        setIsApproved(true); // Mock approval for demo
-        setHasExistingSubmission(false);
+      } catch (err) {
+        console.error('Error fetching contest data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load contest');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchContestAndStatus();
+    if (params.id) {
+      fetchContestAndStatus();
+    }
   }, [params.id]);
 
   const uploadFile = async (file: File): Promise<string> => {

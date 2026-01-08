@@ -88,7 +88,7 @@ export function middleware(request: NextRequest) {
   // CSP header (adjust based on your needs)
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://use.typekit.net; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com https://use.typekit.net; connect-src 'self' https://api.stripe.com https://*.stripe.com; frame-src https://js.stripe.com"
+    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://use.typekit.net https://p.typekit.net; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com https://use.typekit.net https://p.typekit.net; media-src 'self' https: blob:; connect-src 'self' https://api.stripe.com https://*.stripe.com https://*.neon.tech; frame-src https://js.stripe.com"
   )
 
   // Only set X-Content-Type-Options for API routes and pages, not static assets

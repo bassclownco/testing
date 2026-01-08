@@ -26,119 +26,68 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 
-// Mock data - would come from API in real app
-const mockContest: Contest = {
-  id: '1',
-  title: 'Best Bass Fishing Video 2024',
-  description: 'Show us your best bass fishing skills in this exciting video contest. Submit your most impressive catch, technique demonstration, or fishing adventure. Winner gets premium fishing gear and equipment worth $2,000! This is your chance to showcase your fishing expertise and win incredible prizes while joining a community of passionate anglers.',
-  shortDescription: 'Submit your best bass fishing video for a chance to win premium fishing gear worth $2,000',
-  image: '/images/video-review-thumb-1.jpg',
-  prize: '$2,000 in Fishing Gear',
-  startDate: '2024-01-01',
-  endDate: '2024-03-31',
-  applicationDeadline: '2024-02-15',
-  submissionDeadline: '2024-03-15',
-  status: 'open',
-  category: 'Video Production',
-  requirements: [
-    'Original video content only',
-    'Minimum 2 minutes, maximum 10 minutes',
-    'High definition (1080p or higher)',
-    'Include brief description of technique or location',
-    'Must demonstrate bass fishing skills',
-    'No copyrighted music without permission',
-    'Shot within the contest period'
-  ],
-  judges: ['John Fisher', 'Sarah Bass', 'Mike Angler'],
-  maxParticipants: 100,
-  currentParticipants: 45,
-  rules: `Contest Rules and Regulations:
-
-1. ELIGIBILITY
-   - Open to all participants 18 years or older
-   - Must be legal resident of participating countries
-   - One entry per person
-
-2. SUBMISSION REQUIREMENTS
-   - Original video content only
-   - All footage must be shot during contest period
-   - No copyrighted music without proper licensing
-   - Video must be 2-10 minutes in length
-   - HD quality required (1080p minimum)
-
-3. JUDGING CRITERIA
-   - Technical skill and fishing technique (30%)
-   - Video quality and production (25%)
-   - Creativity and storytelling (25%)
-   - Educational value (20%)
-
-4. PRIZES
-   - First Place: $2,000 in premium fishing gear
-   - Second Place: $500 gift card
-   - Third Place: $250 gift card
-   - People's Choice: $100 gift card
-
-5. RIGHTS AND USAGE
-   - Bass Clown Co retains rights to use winning entries for promotional purposes
-   - Participants retain original copyright of their work
-   - By submitting, you grant Bass Clown Co license to use your content
-
-6. DISQUALIFICATION
-   - Plagiarism or stolen content
-   - Violation of submission guidelines
-   - Inappropriate or offensive content
-   - Late submissions will not be accepted`,
-  submissionGuidelines: `Submission Guidelines:
-
-FILE REQUIREMENTS:
-- Format: MP4 (H.264 codec preferred)
-- Resolution: 1080p minimum, 4K maximum
-- Frame rate: 24, 30, or 60 fps
-- Maximum file size: 500MB
-- Audio: Stereo, 48kHz sample rate
-
-CONTENT REQUIREMENTS:
-- Video must feature bass fishing
-- Include location information in description
-- Provide brief explanation of technique used
-- Credit any guests or featured anglers
-- Include safety disclaimer if applicable
-
-UPLOAD PROCESS:
-1. Complete application and get approval
-2. Access submission portal
-3. Upload video file
-4. Fill out submission form with title, description, and tags
-5. Submit for review
-
-DEADLINES:
-- Application: February 15, 2024
-- Submission: March 15, 2024
-- Judging: March 16-30, 2024
-- Winner Announcement: March 31, 2024`,
-  createdBy: 'Bass Clown Co',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z'
-};
-
 export default function ContestDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const [contest, setContest] = useState<Contest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate API call
     const fetchContest = async () => {
       setLoading(true);
-      // In real app, would fetch by params.id
-      setTimeout(() => {
-        setContest(mockContest);
+      setError(null);
+      try {
+        const response = await fetch(`/api/contests/${params.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch contest');
+        }
+        const result = await response.json();
+        if (result.success && result.data) {
+          const contestData = result.data;
+          setContest({
+            id: contestData.id,
+            title: contestData.title,
+            description: contestData.description || '',
+            shortDescription: contestData.shortDescription || contestData.description?.substring(0, 100) || '',
+            image: contestData.image || '/images/assets/bass-clown-co-fish-chase.png',
+            prize: contestData.prize || 'Prize TBD',
+            startDate: contestData.startDate ? new Date(contestData.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            endDate: contestData.endDate ? new Date(contestData.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            applicationDeadline: contestData.applicationDeadline ? new Date(contestData.applicationDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            submissionDeadline: contestData.submissionDeadline ? new Date(contestData.submissionDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            status: contestData.status || 'open',
+            category: contestData.category || 'General',
+            requirements: Array.isArray(contestData.requirements) ? contestData.requirements : 
+                          typeof contestData.requirements === 'object' && contestData.requirements !== null 
+                            ? Object.values(contestData.requirements) as string[]
+                            : [],
+            judges: Array.isArray(contestData.judges) ? contestData.judges : 
+                    typeof contestData.judges === 'object' && contestData.judges !== null
+                      ? Object.values(contestData.judges) as string[]
+                      : [],
+            maxParticipants: contestData.maxParticipants || 100,
+            currentParticipants: contestData.currentParticipants || 0,
+            rules: contestData.rules || '',
+            submissionGuidelines: contestData.submissionGuidelines || '',
+            createdBy: contestData.createdBy || contestData.creatorName || 'Bass Clown Co',
+            createdAt: contestData.createdAt ? new Date(contestData.createdAt).toISOString() : new Date().toISOString(),
+            updatedAt: contestData.updatedAt ? new Date(contestData.updatedAt).toISOString() : new Date().toISOString()
+          });
+        } else {
+          throw new Error('Contest not found');
+        }
+      } catch (err) {
+        console.error('Error fetching contest:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load contest');
+      } finally {
         setLoading(false);
-      }, 500);
+      }
     };
 
-    fetchContest();
+    if (params.id) {
+      fetchContest();
+    }
   }, [params.id]);
 
   if (loading) {
@@ -153,17 +102,21 @@ export default function ContestDetailsPage() {
     );
   }
 
-  if (!contest) {
+  if (error || (!loading && !contest)) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Alert>
+        <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Contest not found. Please check the URL and try again.
+            {error || 'Contest not found. Please check the URL and try again.'}
           </AlertDescription>
         </Alert>
       </div>
     );
+  }
+
+  if (!contest) {
+    return null;
   }
 
   const applicationDeadline = new Date(contest.applicationDeadline);

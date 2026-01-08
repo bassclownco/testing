@@ -25,7 +25,9 @@ export const metadata: Metadata = {
   },
 };
 
-// Sample blog posts data - in a real application, this would be fetched from a database or API
+// REMOVED ALL FAKE DATA - Blog shows Coming Soon overlay
+const blogPosts: any[] = []; // Empty array - no fake data
+/*
 const blogPosts = [
   {
     id: 1,
@@ -82,6 +84,7 @@ const blogPosts = [
     image: "/images/assets/bass-taking-picture.svg"
   },
 ];
+*/
 
 const categories = [
   "Video Production",
@@ -93,17 +96,10 @@ const categories = [
 ];
 
 export default function Blog() {
-  return (
-    <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative"> {/* Main background and text color */}
-      {/* Enhanced Coming Soon Overlay */}
-      <ComingSoonOverlay 
-        title="THE BASS CLOWN BLOG"
-        description="We're casting our lines and reeling in something special! Our blog will feature expert tips, 
-        behind-the-scenes stories, and industry insights from Bass Clown Co."
-        cta={<WaitlistForm />}
-      />
+  const blogPosts: any[] = []; // Empty - ready for blog posts API
 
-      {/* Existing content remains unchanged */}
+  return (
+    <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
       {/* Hero Section 
       <section 
         id="blog-hero" 
@@ -246,7 +242,6 @@ export default function Blog() {
       </section>
       
       <CTASection />
-      */}
     </main>
   );
 }
