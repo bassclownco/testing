@@ -98,11 +98,6 @@ export default function ContentContestsPage() {
         className="relative min-h-[50vh] md:min-h-[40vh] flex flex-col items-center justify-center overflow-hidden py-16 md:py-20 px-4"
         style={{ backgroundColor: '#2C3E50' }}
       >
-        <HookLine
-          size={80}
-          color="#ECE9D9"
-          className="absolute top-0 left-1/2 -translate-x-1/2 z-[1]"
-        />
         <div className="absolute inset-0 bg-black/30 z-[1]"></div>
         <div className="container mx-auto px-4 relative z-10 flex flex-col items-center justify-center text-center">
           <h1 className="font-phosphate text-5xl md:text-7xl tracking-wider text-cream uppercase mb-4 text-shadow-lg title-text">
