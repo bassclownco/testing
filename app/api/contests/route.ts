@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { db, contests, users } from '@/lib/db'
-import { eq, desc, asc, and, or, like, gte, lte } from 'drizzle-orm'
+import { eq, desc, asc, and, or, like, gte, lte, count } from 'drizzle-orm'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { successResponse, errorResponse, validationErrorResponse, handleApiError } from '@/lib/api-response'
 
@@ -102,13 +102,8 @@ export async function GET(request: NextRequest) {
     const contestsList = await contestsQuery
 
     // Get total count for pagination
-    const totalQuery = db
-      .select({ count: contests.id })
-      .from(contests)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-
     const [{ count }] = await db
-      .select({ count: db.$count(contests.id) })
+      .select({ count: count(contests.id) })
       .from(contests)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
 
