@@ -11,7 +11,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ContestCard from '@/components/contests/ContestCard';
 import { Search, Trophy, ArrowRight, Video, Camera, Edit } from 'lucide-react';
 import Link from 'next/link';
-import HookLine from "@/components/HookLine";
 import { CTASection } from '@/components/home/CTASection';
 
 export default function ContentContestsPage() {
