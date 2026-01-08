@@ -99,20 +99,7 @@ export default function Blog() {
 
   return (
     <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
-      {/* Current simple version */}
-      <div className="container mx-auto px-4 py-12 md:py-16 text-center">
-        <h1 className="font-phosphate text-5xl md:text-7xl tracking-wider text-cream uppercase mb-4 text-shadow-lg title-text">
-          THE BASS CLOWN BLOG
-        </h1>
-        <p className="text-lg md:text-xl tracking-wide text-cream/90 font-phosphate max-w-3xl mx-auto title-text mb-8">
-          Expert tips, industry insights, and behind-the-scenes content from the Bass Clown Co team.
-        </p>
-        <p className="text-cream/80 text-lg">
-          Blog posts coming soon!
-        </p>
-      </div>
-      
-      {/* TODO: Uncomment when blog API is ready
+      {/* Hero Section */}
       <section 
         id="blog-hero" 
         className="relative min-h-[50vh] md:min-h-[40vh] flex flex-col items-center justify-center overflow-hidden py-16 md:py-20 px-4"
@@ -134,119 +121,88 @@ export default function Blog() {
         </div>
       </section>
       
+      {/* Main Blog Content Area */}
       <section className="container mx-auto px-4 py-12 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-          <div className="md:col-span-2">
-            <div className="grid grid-cols-1 gap-12">
-              {blogPosts.map((post) => (
-                <div key={post.id} className="bg-[#2D2D2D] rounded-lg overflow-hidden shadow-xl">
-                  <div className="relative h-60">
-                    <Image
-                      src={post.image}
-                      alt={post.title}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                  </div>
-                  <div className="p-6 md:p-8">
-                    <div className="flex flex-wrap items-center mb-4 text-sm text-cream/70">
-                      <div className="flex items-center mr-4 mb-1 md:mb-0">
-                        <Calendar className="h-4 w-4 mr-1.5 text-red-500" />
-                        {post.date}
+        {blogPosts.length === 0 ? (
+          <div className="text-center py-16">
+            <h2 className="text-3xl font-phosphate text-cream mb-4 title-text">Blog Coming Soon!</h2>
+            <p className="text-cream/80 text-lg mb-8 max-w-2xl mx-auto">
+              We're working on exciting content to share with you. Check back soon for expert tips, 
+              industry insights, and behind-the-scenes stories from the Bass Clown Co team.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+              {/* Blog Posts Column */}
+              <div className="md:col-span-2">
+                <div className="grid grid-cols-1 gap-12">
+                  {blogPosts.map((post) => (
+                    <div key={post.id} className="bg-[#2D2D2D] rounded-lg overflow-hidden shadow-xl">
+                      <div className="relative h-60">
+                        <Image
+                          src={post.image}
+                          alt={post.title}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
                       </div>
-                      <div className="flex items-center mr-4 mb-1 md:mb-0">
-                        <User className="h-4 w-4 mr-1.5 text-red-500" />
-                        {post.author}
-                      </div>
-                      <div className="flex items-center">
-                        <Tag className="h-4 w-4 mr-1.5 text-red-500" />
-                        {post.category}
+                      <div className="p-6 md:p-8">
+                        <div className="flex flex-wrap items-center mb-4 text-sm text-cream/70">
+                          <div className="flex items-center mr-4 mb-1 md:mb-0">
+                            <Calendar className="h-4 w-4 mr-1.5 text-red-500" />
+                            {post.date}
+                          </div>
+                          <div className="flex items-center mr-4 mb-1 md:mb-0">
+                            <User className="h-4 w-4 mr-1.5 text-red-500" />
+                            {post.author}
+                          </div>
+                          <div className="flex items-center">
+                            <Tag className="h-4 w-4 mr-1.5 text-red-500" />
+                            {post.category}
+                          </div>
+                        </div>
+                        <h2 className="text-2xl md:text-3xl font-phosphate text-cream mb-3 title-text hover:text-red-500 transition-colors">
+                          <Link href={`/blog/${post.id}`}>{post.title}</Link>
+                        </h2>
+                        <p className="text-cream/80 mb-6 leading-relaxed">{post.excerpt}</p>
+                        <Link 
+                          href={`/blog/${post.id}`} 
+                          className="inline-block bg-red-600 text-white font-phosphate py-2 px-6 rounded-md hover:bg-red-700 transition-colors text-lg"
+                        >
+                          Read More →
+                        </Link>
                       </div>
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-phosphate text-cream mb-3 title-text hover:text-red-500 transition-colors">
-                      <Link href={`/blog/${post.id}`}>{post.title}</Link>
-                    </h2>
-                    <p className="text-cream/80 mb-6 leading-relaxed">{post.excerpt}</p>
-                    <Link 
-                      href={`/blog/${post.id}`} 
-                      className="inline-block bg-red-600 text-white font-phosphate py-2 px-6 rounded-md hover:bg-red-700 transition-colors text-lg"
-                    >
-                      Read More →
-                    </Link>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              
+              {/* Sidebar Column */}
+              <aside className="md:col-span-1 space-y-8">
+                {/* Categories */}
+                <div className="bg-[#2D2D2D] p-6 rounded-lg shadow-xl">
+                  <h3 className="text-xl md:text-2xl font-phosphate text-cream mb-4 title-text">Categories</h3>
+                  <ul className="space-y-2">
+                    {categories.map((category, index) => (
+                      <li key={index}>
+                        <a 
+                          href="#" 
+                          className="text-cream/80 hover:text-red-500 transition-colors flex items-center group"
+                        >
+                          <Tag className="h-4 w-4 mr-2 text-red-500 group-hover:text-red-400 transition-colors" />
+                          {category}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </aside>
             </div>
-            
-            <div className="mt-12 flex justify-center">
-              <nav className="inline-flex rounded-md shadow-sm">
-                <a 
-                  href="#" 
-                  className="px-4 py-2 border border-slate-700 text-cream/80 rounded-l-md hover:bg-slate-700 transition-colors"
-                >
-                  Previous
-                </a>
-                <a 
-                  href="#" 
-                  className="px-4 py-2 border-y border-slate-700 text-white bg-red-600 hover:bg-red-700 transition-colors"
-                >
-                  1
-                </a>
-                <a 
-                  href="#" 
-                  className="px-4 py-2 border border-slate-700 text-cream/80 hover:bg-slate-700 transition-colors"
-                >
-                  2
-                </a>
-                <a 
-                  href="#" 
-                  className="px-4 py-2 border-y border-r border-slate-700 text-cream/80 rounded-r-md hover:bg-slate-700 transition-colors"
-                >
-                  Next
-                </a>
-              </nav>
-            </div>
-          </div>
-          
-          <aside className="md:col-span-1 space-y-8">
-            <div className="bg-[#2D2D2D] p-6 rounded-lg shadow-xl">
-              <h3 className="text-xl md:text-2xl font-phosphate text-cream mb-4 title-text">Categories</h3>
-              <ul className="space-y-2">
-                {categories.map((category, index) => (
-                  <li key={index}>
-                    <a 
-                      href="#" 
-                      className="text-cream/80 hover:text-red-500 transition-colors flex items-center group"
-                    >
-                      <Tag className="h-4 w-4 mr-2 text-red-500 group-hover:text-red-400 transition-colors" />
-                      {category}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            <div className="bg-[#2D2D2D] p-6 rounded-lg shadow-xl">
-              <h3 className="text-xl md:text-2xl font-phosphate text-cream mb-4 title-text">Recent Posts</h3>
-              <ul className="space-y-4">
-                {blogPosts.slice(0, 3).map((post) => (
-                  <li key={post.id} className="border-b border-slate-700 pb-4 last:border-b-0 last:pb-0">
-                    <Link href={`/blog/${post.id}`} className="group">
-                      <h4 className="font-semibold text-cream group-hover:text-red-500 transition-colors mb-1">{post.title}</h4>
-                      <div className="text-xs text-cream/70 flex items-center">
-                        <Calendar className="h-3 w-3 mr-1.5 text-red-500" />
-                        {post.date}
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </aside>
-        </div>
+          </>
+        )}
       </section>
-      */}
       
       <CTASection />
     </main>

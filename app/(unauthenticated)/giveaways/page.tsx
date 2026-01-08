@@ -6,156 +6,80 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Clock, Gift, Users, Search, Filter, Trophy, ArrowRight, Star } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import BassFishy from '@/components/BassFishy';
-import Bubbles from '@/components/Bubbles';
 import { GiveawayCard } from '@/components/giveaways/GiveawayCard';
 import { Giveaway } from '@/lib/types';
-import WaitlistForm from '@/components/WaitlistForm';
-import ComingSoonOverlay from '@/components/ComingSoonOverlay';
-
-// Update mockGiveaways to include categories
-const mockGiveaways: Giveaway[] = [
-  {
-    id: '1',
-    category: 'Gear',
-    title: 'Ultimate Bass Fishing Gear Bundle',
-    description: 'Win a complete bass fishing setup including premium rod, reel, tackle box, and exclusive Bass Clown Co merchandise. Everything you need for your next fishing adventure!',
-    prizeValue: '$750',
-    entryCount: 1247,
-    maxEntries: 2000,
-    startDate: new Date('2024-01-15'),
-    endDate: new Date('2024-02-15'),
-    status: 'active' as const,
-    image: '/images/video-review-thumb-1.jpg',
-    rules: [
-      'Must be 18+ years old',
-      'Valid email address required',
-      'One entry per person',
-      'US residents only'
-    ],
-    prizeItems: [
-      'Premium Bass Rod',
-      'High-Quality Reel',
-      'Tackle Box with Lures',
-      'Bass Clown Co Merchandise'
-    ]
-  },
-  {
-    id: '2',
-    category: 'Experiences',
-    title: 'Tournament Entry Package',
-    description: 'Free entry to our next bass fishing tournament plus accommodation, meals, and professional coaching session. Perfect for serious anglers!',
-    prizeValue: '$500',
-    entryCount: 892,
-    maxEntries: 1500,
-    startDate: new Date('2024-02-01'),
-    endDate: new Date('2024-03-01'),
-    status: 'active' as const,
-    image: '/images/video-review-thumb-1.jpg',
-    rules: [
-      'Must be 18+ years old',
-      'Valid fishing license',
-      'Available for tournament dates',
-      'Transportation not included'
-    ],
-    prizeItems: [
-      'Tournament Entry Fee',
-      'Hotel Accommodation',
-      'Meals Included',
-      'Professional Coaching Session'
-    ]
-  },
-  {
-    id: '3',
-    category: 'Equipment',
-    title: 'Professional Video Equipment Giveaway',
-    description: 'Win professional camera equipment perfect for creating fishing content. Includes 4K camera, stabilizer, microphone, and editing software license.',
-    prizeValue: '$1,200',
-    entryCount: 2156,
-    maxEntries: 3000,
-    startDate: new Date('2024-01-20'),
-    endDate: new Date('2024-02-20'),
-    status: 'active' as const,
-    image: '/images/video-review-thumb-1.jpg',
-    rules: [
-      'Must be 18+ years old',
-      'Content creator or aspiring creator',
-      'Agree to create content featuring prize',
-      'Valid social media presence'
-    ],
-    prizeItems: [
-      '4K Camera',
-      'Camera Stabilizer',
-      'Professional Microphone',
-      'Video Editing Software License'
-    ]
-  },
-  {
-    id: '4',
-    category: 'Experiences',
-    title: 'Exclusive Fishing Trip Experience',
-    description: 'Join us for an exclusive guided fishing trip to a premium bass fishing location. Includes guide, boat, equipment, and professional photography.',
-    prizeValue: '$800',
-    entryCount: 567,
-    maxEntries: 1000,
-    startDate: new Date('2024-02-10'),
-    endDate: new Date('2024-03-10'),
-    status: 'upcoming' as const,
-    image: '/images/video-review-thumb-1.jpg',
-    rules: [
-      'Must be 18+ years old',
-      'Valid fishing license',
-      'Able to travel to location',
-      'Basic swimming ability'
-    ],
-    prizeItems: [
-      'Guided Fishing Trip',
-      'Boat and Equipment',
-      'Professional Photography',
-      'Travel Coordination'
-    ]
-  },
-  {
-    id: '5',
-    category: 'Gear',
-    title: 'Bass Clown Co Merchandise Pack',
-    description: 'Complete collection of Bass Clown Co branded merchandise including apparel, accessories, and limited edition items.',
-    prizeValue: '$300',
-    entryCount: 1834,
-    maxEntries: 2500,
-    startDate: new Date('2024-01-01'),
-    endDate: new Date('2024-01-31'),
-    status: 'ended' as const,
-    image: '/images/video-review-thumb-1.jpg',
-    rules: [
-      'Must be 18+ years old',
-      'Valid shipping address',
-      'Brand enthusiast',
-      'Social media participation'
-    ],
-    prizeItems: [
-      'Bass Clown Co Apparel',
-      'Branded Accessories',
-      'Limited Edition Items',
-      'Exclusive Merchandise'
-    ]
-  }
-];
+import { CTASection } from '@/components/home/CTASection';
 
 export default function GiveawaysPage() {
-  const [giveaways, setGiveaways] = useState(mockGiveaways);
+  const [giveaways, setGiveaways] = useState<Giveaway[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  useEffect(() => {
+    fetchGiveaways();
+  }, []);
+
+  const fetchGiveaways = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/giveaways?limit=100&status=active', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch giveaways');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.giveaways) {
+        // Transform API data to match Giveaway type
+        const transformedGiveaways: Giveaway[] = result.data.giveaways.map((giveaway: any) => ({
+          id: giveaway.id,
+          title: giveaway.title,
+          description: giveaway.description || '',
+          longDescription: giveaway.longDescription,
+          prizeValue: giveaway.prizeValue || 'Prize TBD',
+          entryCount: 0, // Will be fetched separately if needed
+          maxEntries: giveaway.maxEntries || null,
+          startDate: giveaway.startDate ? new Date(giveaway.startDate) : new Date(),
+          endDate: giveaway.endDate ? new Date(giveaway.endDate) : new Date(),
+          status: (giveaway.status || 'upcoming') as 'active' | 'upcoming' | 'ended',
+          image: giveaway.image || '/images/assets/bass-clown-co-fish-chase.png',
+          rules: Array.isArray(giveaway.rules) ? giveaway.rules : 
+                 typeof giveaway.rules === 'object' && giveaway.rules !== null
+                   ? Object.values(giveaway.rules) as string[]
+                   : [],
+          prizeItems: Array.isArray(giveaway.prizeItems) ? giveaway.prizeItems : [],
+          category: 'Gear', // Default category, could be derived from giveaway data
+          sponsor: giveaway.sponsor,
+          createdBy: giveaway.createdBy,
+          createdAt: giveaway.createdAt ? new Date(giveaway.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: giveaway.updatedAt ? new Date(giveaway.updatedAt).toISOString() : new Date().toISOString()
+        }));
+
+        setGiveaways(transformedGiveaways);
+      }
+    } catch (error) {
+      console.error('Error fetching giveaways:', error);
+      // Fallback to empty array - will show empty state
+      setGiveaways([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredGiveaways = giveaways.filter(giveaway => {
     const matchesSearch = giveaway.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          giveaway.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || giveaway.status === selectedStatus;
-    const matchesCategory = selectedCategory === 'all' || giveaway.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || (giveaway.category && giveaway.category === selectedCategory);
     
     return matchesSearch && matchesStatus && matchesCategory;
   });
@@ -168,22 +92,13 @@ export default function GiveawaysPage() {
 
   return (
     <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
-      {/* Enhanced Coming Soon Overlay */}
-      <ComingSoonOverlay 
-        title="GIVEAWAYS"
-        description="We're preparing amazing giveaways with incredible fishing gear, equipment, and exclusive experiences. 
-        Get ready for your chance to win big!"
-        cta={<WaitlistForm />}
-      />
-
-      {/* Existing content remains unchanged */}
-      {/* Hero Section 
+      {/* Hero Section */}
       <section 
         id="giveaways-hero" 
         className="relative min-h-[50vh] md:min-h-[40vh] flex flex-col items-center justify-center overflow-hidden py-16 md:py-20 px-4"
-        style={{ backgroundColor: '#2C3E50' }} // Dark blue-gray background
+        style={{ backgroundColor: '#2C3E50' }}
       >
-        <div className="absolute inset-0 bg-black/30 z-[1]"></div> {/* Optional overlay
+        <div className="absolute inset-0 bg-black/30 z-[1]"></div>
         <div className="container mx-auto px-4 relative z-10 flex flex-col items-center justify-center text-center">
           <h1 className="font-phosphate text-5xl md:text-7xl tracking-wider text-cream uppercase mb-4 text-shadow-lg title-text">
             FISHING GIVEAWAYS
@@ -195,38 +110,54 @@ export default function GiveawaysPage() {
       </section>
       
       <section className="container mx-auto px-4 py-12 md:py-16">
-        {/* Stats Cards 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-[#2D2D2D] border-slate-700">
-            <CardContent className="flex items-center p-6">
-              <Gift className="h-8 w-8 text-green-400 mr-3" />
-              <div>
-                <p className="text-2xl font-bold text-cream">{gearCount}</p>
-                <p className="text-sm text-cream/60">Gear Giveaways</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-[#2D2D2D] border-slate-700">
-            <CardContent className="flex items-center p-6">
-              <Calendar className="h-8 w-8 text-blue-400 mr-3" />
-              <div>
-                <p className="text-2xl font-bold text-cream">{experiencesCount}</p>
-                <p className="text-sm text-cream/60">Experience Giveaways</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-[#2D2D2D] border-slate-700">
-            <CardContent className="flex items-center p-6">
-              <Trophy className="h-8 w-8 text-yellow-400 mr-3" />
-              <div>
-                <p className="text-2xl font-bold text-cream">{equipmentCount}</p>
-                <p className="text-sm text-cream/60">Equipment Giveaways</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Stats Cards */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-slate-700">
+                <CardContent className="flex items-center p-6">
+                  <Skeleton className="h-8 w-8 mr-3" />
+                  <div>
+                    <Skeleton className="h-6 w-12 mb-2" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card className="bg-[#2D2D2D] border-slate-700">
+              <CardContent className="flex items-center p-6">
+                <Gift className="h-8 w-8 text-green-400 mr-3" />
+                <div>
+                  <p className="text-2xl font-bold text-cream">{gearCount}</p>
+                  <p className="text-sm text-cream/60">Gear Giveaways</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-[#2D2D2D] border-slate-700">
+              <CardContent className="flex items-center p-6">
+                <Calendar className="h-8 w-8 text-blue-400 mr-3" />
+                <div>
+                  <p className="text-2xl font-bold text-cream">{experiencesCount}</p>
+                  <p className="text-sm text-cream/60">Experience Giveaways</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-[#2D2D2D] border-slate-700">
+              <CardContent className="flex items-center p-6">
+                <Trophy className="h-8 w-8 text-yellow-400 mr-3" />
+                <div>
+                  <p className="text-2xl font-bold text-cream">{equipmentCount}</p>
+                  <p className="text-sm text-cream/60">Equipment Giveaways</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-        {/* Search and Filters 
+        {/* Search and Filters */}
         <Card className="mb-8 bg-[#2D2D2D] border-slate-700">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
@@ -269,27 +200,53 @@ export default function GiveawaysPage() {
           </CardContent>
         </Card>
 
-        {/* Giveaway Grid 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGiveaways.map((giveaway) => (
-            <GiveawayCard key={giveaway.id} giveaway={giveaway} />
-          ))}
-        </div>
-
-        {/* Empty State 
-        {filteredGiveaways.length === 0 && (
+        {/* Giveaway Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
+                <Skeleton className="aspect-video w-full" />
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        ) : filteredGiveaways.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredGiveaways.map((giveaway) => (
+              <GiveawayCard key={giveaway.id} giveaway={giveaway} />
+            ))}
+          </div>
+        ) : (
           <div className="text-center py-12">
             <Trophy className="h-16 w-16 text-cream/40 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-cream mb-2">
               No giveaways found
             </h3>
-            <p className="text-cream/60">
-              Try adjusting your search terms or filters to find more giveaways.
+            <p className="text-cream/60 mb-6">
+              {searchTerm || selectedStatus !== 'all' || selectedCategory !== 'all'
+                ? "Try adjusting your search terms or filters to find more giveaways."
+                : "Check back soon for exciting giveaways!"}
             </p>
+            {(searchTerm || selectedStatus !== 'all' || selectedCategory !== 'all') && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedStatus('all');
+                  setSelectedCategory('all');
+                }}
+                className="bg-slate-700 border-slate-600 text-cream hover:bg-slate-600"
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
         )}
 
-        {/* How It Works Section 
+        {/* How It Works Section */}
         <div className="mt-16">
           <Card className="bg-[#2D2D2D] border-slate-700">
             <CardHeader>
@@ -341,7 +298,7 @@ export default function GiveawaysPage() {
           </Card>
         </div>
 
-        {/* Call to Action 
+        {/* Call to Action */}
         <div className="mt-16 text-center">
           <Card className="bg-gradient-to-r from-red-600 to-red-700 text-white border-0">
             <CardContent className="p-8">
@@ -366,7 +323,8 @@ export default function GiveawaysPage() {
           </Card>
         </div>
       </section>
-      */}
+      
+      <CTASection />
     </main>
   );
 }

@@ -16,7 +16,9 @@ export function GiveawayCard({ giveaway, showEntryButton = true, variant = 'defa
   const isUpcoming = giveaway.status === 'upcoming';
   const isEnded = giveaway.status === 'ended';
   const daysLeft = Math.ceil((giveaway.endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-  const entryPercentage = (giveaway.entryCount / giveaway.maxEntries) * 100;
+  const entryPercentage = giveaway.maxEntries && giveaway.maxEntries > 0 
+    ? (giveaway.entryCount / giveaway.maxEntries) * 100 
+    : 0;
   
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -47,15 +49,19 @@ export function GiveawayCard({ giveaway, showEntryButton = true, variant = 'defa
           
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Entries</span>
-            <span className="font-medium">{giveaway.entryCount} / {giveaway.maxEntries}</span>
+            <span className="font-medium">
+              {giveaway.entryCount} {giveaway.maxEntries ? `/ ${giveaway.maxEntries}` : ''}
+            </span>
           </div>
           
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${entryPercentage}%` }}
-            />
-          </div>
+          {giveaway.maxEntries && giveaway.maxEntries > 0 && (
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${entryPercentage}%` }}
+              />
+            </div>
+          )}
           
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center gap-1">

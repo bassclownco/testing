@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ShoppingCart, Star } from "lucide-react";
 import { CTASection } from '@/components/home/CTASection';
 import HookLine from "@/components/HookLine";
+import HookLine from "@/components/HookLine";
 import BassFishy from "@/components/BassFishy";
 import Bubbles from "@/components/Bubbles";
 
@@ -97,44 +98,7 @@ export default function Store() {
 
   return (
     <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
-      {/* Current simple version */}
-      <div className="container mx-auto px-4 py-12 md:py-16 text-center">
-        <h1 className="font-phosphate text-5xl md:text-7xl tracking-wider text-cream uppercase mb-4 text-shadow-lg title-text">
-          THE BASS CLOWN STORE
-        </h1>
-        <p className="text-lg md:text-xl tracking-wide text-cream/90 font-phosphate max-w-3xl mx-auto title-text mb-8">
-          Shop for Bass Clown Co branded merchandise and fishing accessories. 
-          Show your love for fishing content with our quality products.
-        </p>
-        <p className="text-cream/80 text-lg mb-8">
-          Products coming soon!
-        </p>
-        <div className="bg-[#2D2D2D] p-8 md:p-12 rounded-lg text-center shadow-xl max-w-2xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-phosphate text-cream mb-4 title-text">Looking for Custom Merchandise?</h2>
-          <p className="text-cream/80 mb-6 leading-relaxed">
-            We offer custom-branded merchandise for fishing brands and organizations. 
-            Create promotional items that showcase your brand with our quality products.
-          </p>
-          <Link 
-            href="/contact" 
-            className="inline-block bg-red-600 hover:bg-red-700 text-white font-phosphate title-text px-8 py-3 rounded-md shadow-lg hover:shadow-xl transition-all text-lg"
-          >
-            Contact for Custom Orders
-          </Link>
-        </div>
-      </div>
-      
-      {/* TODO: Uncomment when store API is ready
-      <div className="w-full h-[22px] overflow-hidden">
-        <Image 
-          src="/images/assets/video-reel-1.svg" 
-          alt="Film reel border"
-          width={2560} 
-          height={22}
-          className="object-cover w-full h-full"
-        />
-      </div>
-
+      {/* Hero Section */}
       <section 
         id="store-hero" 
         className="relative min-h-[50vh] md:min-h-[40vh] flex flex-col items-center justify-center overflow-hidden py-16 md:py-20 px-4"
@@ -157,74 +121,102 @@ export default function Store() {
         </div>
       </section>
       
+      {/* Products Section */}
       <section className="container mx-auto px-4 py-12 md:py-16">
-        <div className="flex flex-wrap justify-center mb-12 gap-3">
-          {categories.map((category, index) => (
-            <button
-              key={index}
-              className={`px-5 py-2.5 rounded-full text-sm font-phosphate title-text transition-colors ${
-                index === 0 
-                  ? "bg-red-600 text-white shadow-md" 
-                  : "bg-slate-700 text-cream/80 hover:bg-slate-600 shadow-sm"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-16">
-          {products.map((product) => (
-            <div key={product.id} className="bg-[#2D2D2D] rounded-lg overflow-hidden shadow-xl hover:shadow-2xl transition-shadow flex flex-col">
-              <div className="relative h-56 w-full">
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                />
-              </div>
-              <div className="p-5 flex flex-col flex-grow">
-                <div className="flex items-center mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      className={`h-4 w-4 ${
-                        i < product.rating ? "text-yellow-400" : "text-cream/30"
-                      }`} 
-                      fill={i < product.rating ? "currentColor" : "none"}
-                    />
-                  ))}
-                  <span className="text-xs text-cream/60 ml-2">({product.rating}.0)</span>
-                </div>
-                <h2 className="text-xl font-phosphate text-cream mb-2 title-text flex-grow min-h-[3em]">{product.name}</h2>
-                <div className="flex items-center justify-between mt-auto pt-3">
-                  <span className="text-xl font-phosphate title-text text-yellow-400">${product.price}</span>
-                  <button className="bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-full shadow-md hover:shadow-lg transition-all">
-                    <ShoppingCart className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
+        {products.length === 0 ? (
+          <div className="text-center py-16">
+            <h2 className="text-3xl font-phosphate text-cream mb-4 title-text">Store Coming Soon!</h2>
+            <p className="text-cream/80 text-lg mb-8 max-w-2xl mx-auto">
+              We're working on bringing you amazing Bass Clown Co branded merchandise and fishing accessories. 
+              Check back soon for exciting products!
+            </p>
+            <div className="bg-[#2D2D2D] p-8 md:p-12 rounded-lg text-center shadow-xl max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-phosphate text-cream mb-4 title-text">Looking for Custom Merchandise?</h2>
+              <p className="text-cream/80 mb-6 leading-relaxed">
+                We offer custom-branded merchandise for fishing brands and organizations. 
+                Create promotional items that showcase your brand with our quality products.
+              </p>
+              <Link 
+                href="/contact" 
+                className="inline-block bg-red-600 hover:bg-red-700 text-white font-phosphate title-text px-8 py-3 rounded-md shadow-lg hover:shadow-xl transition-all text-lg"
+              >
+                Contact for Custom Orders
+              </Link>
             </div>
-          ))}
-        </div>
-        
-        <div className="bg-[#2D2D2D] p-8 md:p-12 rounded-lg text-center shadow-xl">
-          <h2 className="text-2xl md:text-3xl font-phosphate text-cream mb-4 title-text">Looking for Custom Merchandise?</h2>
-          <p className="text-cream/80 mb-6 max-w-2xl mx-auto leading-relaxed">
-            We offer custom-branded merchandise for fishing brands and organizations. 
-            Create promotional items that showcase your brand with our quality products.
-          </p>
-          <Link 
-            href="/contact" 
-            className="inline-block bg-red-600 hover:bg-red-700 text-white font-phosphate title-text px-8 py-3 rounded-md shadow-lg hover:shadow-xl transition-all text-lg"
-          >
-            Contact for Custom Orders
-          </Link>
-        </div>
+          </div>
+        ) : (
+          <>
+            {/* Category Filter */}
+            <div className="flex flex-wrap justify-center mb-12 gap-3">
+              {categories.map((category, index) => (
+                <button
+                  key={index}
+                  className={`px-5 py-2.5 rounded-full text-sm font-phosphate title-text transition-colors ${
+                    index === 0 
+                      ? "bg-red-600 text-white shadow-md" 
+                      : "bg-slate-700 text-cream/80 hover:bg-slate-600 shadow-sm"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+            
+            {/* Products Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-16">
+              {products.map((product) => (
+                <div key={product.id} className="bg-[#2D2D2D] rounded-lg overflow-hidden shadow-xl hover:shadow-2xl transition-shadow flex flex-col">
+                  <div className="relative h-56 w-full">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    />
+                  </div>
+                  <div className="p-5 flex flex-col flex-grow">
+                    <div className="flex items-center mb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`h-4 w-4 ${
+                            i < product.rating ? "text-yellow-400" : "text-cream/30"
+                          }`} 
+                          fill={i < product.rating ? "currentColor" : "none"}
+                        />
+                      ))}
+                      <span className="text-xs text-cream/60 ml-2">({product.rating}.0)</span>
+                    </div>
+                    <h2 className="text-xl font-phosphate text-cream mb-2 title-text flex-grow min-h-[3em]">{product.name}</h2>
+                    <div className="flex items-center justify-between mt-auto pt-3">
+                      <span className="text-xl font-phosphate title-text text-yellow-400">${product.price}</span>
+                      <button className="bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-full shadow-md hover:shadow-lg transition-all">
+                        <ShoppingCart className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Custom Merchandise CTA */}
+            <div className="bg-[#2D2D2D] p-8 md:p-12 rounded-lg text-center shadow-xl max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-phosphate text-cream mb-4 title-text">Looking for Custom Merchandise?</h2>
+              <p className="text-cream/80 mb-6 leading-relaxed">
+                We offer custom-branded merchandise for fishing brands and organizations. 
+                Create promotional items that showcase your brand with our quality products.
+              </p>
+              <Link 
+                href="/contact" 
+                className="inline-block bg-red-600 hover:bg-red-700 text-white font-phosphate title-text px-8 py-3 rounded-md shadow-lg hover:shadow-xl transition-all text-lg"
+              >
+                Contact for Custom Orders
+              </Link>
+            </div>
+          </>
+        )}
       </section>
-      */}
       
       <CTASection />
     </main>

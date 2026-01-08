@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const featured = searchParams.get('featured') === 'true'
     const category = searchParams.get('category')
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 100
     const published = searchParams.get('published') !== 'false' // default to true
 
     // Apply filters
@@ -24,32 +24,31 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(portfolioVideos.category, category))
     }
 
-    let query = db.select().from(portfolioVideos)
+    // Build where clause
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions))
-    }
+    // Execute query
+    let videosQuery = db
+      .select()
+      .from(portfolioVideos)
+      .where(whereClause)
 
-    // Order by featured order (for featured), then display order, then created date
+    // Apply order by
     if (featured) {
-      query = query.orderBy(
+      videosQuery = videosQuery.orderBy(
         asc(portfolioVideos.featuredOrder),
         asc(portfolioVideos.displayOrder),
         desc(portfolioVideos.createdAt)
       )
     } else {
-      query = query.orderBy(
+      videosQuery = videosQuery.orderBy(
         asc(portfolioVideos.displayOrder),
         desc(portfolioVideos.createdAt)
       )
     }
 
     // Apply limit
-    if (limit) {
-      query = query.limit(limit)
-    }
-
-    const videos = await query
+    const videos = await videosQuery.limit(limit)
 
     return successResponse({ videos }, 'Portfolio videos fetched successfully')
   } catch (error) {
