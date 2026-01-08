@@ -27,28 +27,27 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-    // Execute query
-    let videosQuery = db
-      .select()
-      .from(portfolioVideos)
-      .where(whereClause)
-
-    // Apply order by
-    if (featured) {
-      videosQuery = videosQuery.orderBy(
-        asc(portfolioVideos.featuredOrder),
-        asc(portfolioVideos.displayOrder),
-        desc(portfolioVideos.createdAt)
-      )
-    } else {
-      videosQuery = videosQuery.orderBy(
-        asc(portfolioVideos.displayOrder),
-        desc(portfolioVideos.createdAt)
-      )
-    }
-
-    // Apply limit
-    const videos = await videosQuery.limit(limit)
+    // Execute query with entire chain built at once (conditional orderBy)
+    const videos = featured
+      ? await db
+          .select()
+          .from(portfolioVideos)
+          .where(whereClause)
+          .orderBy(
+            asc(portfolioVideos.featuredOrder),
+            asc(portfolioVideos.displayOrder),
+            desc(portfolioVideos.createdAt)
+          )
+          .limit(limit)
+      : await db
+          .select()
+          .from(portfolioVideos)
+          .where(whereClause)
+          .orderBy(
+            asc(portfolioVideos.displayOrder),
+            desc(portfolioVideos.createdAt)
+          )
+          .limit(limit)
 
     return successResponse({ videos }, 'Portfolio videos fetched successfully')
   } catch (error) {
