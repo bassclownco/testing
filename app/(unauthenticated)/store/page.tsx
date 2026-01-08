@@ -4,9 +4,6 @@ import Link from "next/link";
 import { ShoppingCart, Star } from "lucide-react";
 import { CTASection } from '@/components/home/CTASection';
 import HookLine from "@/components/HookLine";
-import HookLine from "@/components/HookLine";
-import BassFishy from "@/components/BassFishy";
-import Bubbles from "@/components/Bubbles";
 
 export const metadata: Metadata = {
   title: 'Store',
