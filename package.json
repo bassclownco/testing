@@ -9,7 +9,9 @@
     "lint": "next lint",
     "create-admin": "bun scripts/setup-database.ts",
     "create-admin:node": "node scripts/setup-database-node.js",
-    "setup": "npm install && npm run create-admin:node"
+    "setup": "npm install && npm run create-admin:node",
+    "upload-blobs": "node scripts/upload-blobs-to-vercel.js",
+    "update-blob-urls": "node scripts/update-database-urls.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
