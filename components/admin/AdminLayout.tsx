@@ -71,6 +71,11 @@ const navigation = [
     icon: FileText,
   },
   {
+    name: 'Blog',
+    href: '/admin/blog',
+    icon: FileText,
+  },
+  {
     name: 'Points System',
     href: '/admin/points',
     icon: Coins,

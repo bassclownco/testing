@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { db, contests, contestApplications, users } from '@/lib/db'
 import { eq, and, count } from 'drizzle-orm'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, checkActiveMembership } from '@/lib/auth'
 import { successResponse, errorResponse, validationErrorResponse, notFoundResponse, handleApiError } from '@/lib/api-response'
 
 const contestApplicationSchema = z.object({
@@ -34,6 +34,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const applicationData = validation.data
+
+    // Check if user has active membership
+    const membershipCheck = await checkActiveMembership(user.id)
+    if (!membershipCheck.isActive) {
+      return errorResponse(membershipCheck.message || 'Active membership required to apply to contests', 403)
+    }
 
     // Check if contest exists
     const [contest] = await db
@@ -159,10 +165,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ))
       .limit(1)
 
+    // Check membership for canApply
+    const membershipCheck = await checkActiveMembership(user.id)
+    const canApply = !application && 
+                     contest.status === 'open' && 
+                     contest.applicationDeadline > new Date() &&
+                     membershipCheck.isActive
+
     return successResponse({
       contest,
       application: application || null,
-      canApply: !application && contest.status === 'open' && contest.applicationDeadline > new Date()
+      canApply,
+      membershipRequired: !membershipCheck.isActive,
+      membershipMessage: membershipCheck.message
     }, 'Application status retrieved successfully')
 
   } catch (error) {

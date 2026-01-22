@@ -36,9 +36,9 @@ const useVideoThumbnail = (videoUrl: string) => {
         }
 
         video.onloadedmetadata = () => {
-          // Set canvas dimensions to a standard aspect ratio (16:9) for consistency
+          // Set canvas dimensions to a standard 16:9 aspect ratio for consistency
           const targetWidth = 640;
-          const targetHeight = 360;
+          const targetHeight = 360; // 16:9 ratio
           canvas.width = targetWidth;
           canvas.height = targetHeight;
           
@@ -73,8 +73,28 @@ const useVideoThumbnail = (videoUrl: string) => {
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw video frame with proper scaling (contain behavior)
-            ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+            // Draw video frame with cover behavior (fill entire canvas, may crop)
+            // Calculate cover dimensions
+            const videoAspect = video.videoWidth / video.videoHeight;
+            const canvasAspect = canvas.width / canvas.height;
+            
+            let coverWidth, coverHeight, coverX, coverY;
+            
+            if (videoAspect > canvasAspect) {
+              // Video is wider - fit to height and crop width
+              coverHeight = canvas.height;
+              coverWidth = canvas.height * videoAspect;
+              coverX = (canvas.width - coverWidth) / 2;
+              coverY = 0;
+            } else {
+              // Video is taller - fit to width and crop height
+              coverWidth = canvas.width;
+              coverHeight = canvas.width / videoAspect;
+              coverX = 0;
+              coverY = (canvas.height - coverHeight) / 2;
+            }
+            
+            ctx.drawImage(video, coverX, coverY, coverWidth, coverHeight);
             
             // Convert canvas to blob URL
             canvas.toBlob((blob) => {
@@ -148,7 +168,7 @@ const VideoThumbnail = ({ video }: { video: VideoItem }) => {
         src={thumbnail}
         alt={video.title}
         fill
-        className="object-contain bg-black"
+        className="object-cover bg-black"
         unoptimized // Since we're using blob URLs
       />
     );
@@ -279,8 +299,8 @@ export const VideoGrid = () => {
                 }}
                 className="project-card bg-black overflow-hidden"
               >
-                {/* Video thumbnail with play button */}
-                <div className="relative h-64 bg-black">
+                {/* Video thumbnail with play button - fixed aspect ratio */}
+                <div className="relative aspect-video bg-black w-full">
                   <VideoThumbnail video={video} />
                   <button
                     onClick={() => handlePlayClick(video)}

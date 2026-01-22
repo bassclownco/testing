@@ -1,19 +1,17 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { db, giveaways, giveawayEntries, users, pointsTransactions } from '@/lib/db'
+import { db, giveaways, giveawayEntries, users } from '@/lib/db'
 import { eq, count, and, desc, max } from 'drizzle-orm'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, checkActiveMembership } from '@/lib/auth'
 import { successResponse, errorResponse, validationErrorResponse, notFoundResponse, handleApiError } from '@/lib/api-response'
 
 export const dynamic = 'force-dynamic';
 
 const giveawayEntrySchema = z.object({
-  entryMethod: z.enum(['points', 'social_media', 'referral', 'newsletter']).optional(),
-  socialProof: z.string().url().optional(), // URL for social media post
-  referralCode: z.string().optional()
+  entryType: z.enum(['free', 'purchased']).optional().default('free')
 })
 
-// POST - Enter giveaway
+// POST - Enter giveaway (free entry for members)
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: giveawayId } = await params
@@ -27,7 +25,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return validationErrorResponse(errors)
     }
 
-    const entryData = validation.data
+    const { entryType } = validation.data
+
+    // Check if user has active membership
+    const membershipCheck = await checkActiveMembership(user.id)
+    if (!membershipCheck.isActive) {
+      return errorResponse(membershipCheck.message || 'Active membership required', 403)
+    }
 
     // Check if giveaway exists
     const [giveaway] = await db
@@ -46,20 +50,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return errorResponse('Giveaway is not currently accepting entries', 400)
     }
 
-    // Check if user has already entered
-    const [existingEntry] = await db
-      .select()
-      .from(giveawayEntries)
-      .where(and(
-        eq(giveawayEntries.giveawayId, giveawayId),
-        eq(giveawayEntries.userId, user.id)
-      ))
-      .limit(1)
-
-    if (existingEntry) {
-      return errorResponse('You have already entered this giveaway', 400)
-    }
-
     // Check if giveaway has reached max entries
     if (giveaway.maxEntries) {
       const [currentEntries] = await db
@@ -72,19 +62,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    // Check if user has enough points (if entry requires points)
-    const entryCost = 10 // Default entry cost, this could come from giveaway settings
-    
-    if (entryData.entryMethod === 'points') {
-      // Get user's current points from database
-      const [userData] = await db
-        .select({ pointsBalance: users.pointsBalance })
-        .from(users)
-        .where(eq(users.id, user.id))
+    // Check if user has already used their free entry
+    if (entryType === 'free') {
+      const [freeEntry] = await db
+        .select()
+        .from(giveawayEntries)
+        .where(and(
+          eq(giveawayEntries.giveawayId, giveawayId),
+          eq(giveawayEntries.userId, user.id),
+          eq(giveawayEntries.entryType, 'free')
+        ))
         .limit(1)
 
-      if (!userData || (userData.pointsBalance || 0) < entryCost) {
-        return errorResponse('Insufficient points to enter this giveaway', 400)
+      if (freeEntry) {
+        return errorResponse('You have already used your free entry. You can purchase additional entries.', 400)
       }
     }
 
@@ -103,6 +94,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         giveawayId,
         userId: user.id,
         entryNumber: nextEntryNumber,
+        entryType: entryType,
         status: 'entered'
       })
       .returning({
@@ -110,41 +102,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         giveawayId: giveawayEntries.giveawayId,
         userId: giveawayEntries.userId,
         entryNumber: giveawayEntries.entryNumber,
+        entryType: giveawayEntries.entryType,
         status: giveawayEntries.status,
         createdAt: giveawayEntries.createdAt
       })
-
-    // If entry used points, deduct them and create transaction
-    if (entryData.entryMethod === 'points') {
-      // Get current points again for the update
-      const [currentUser] = await db
-        .select({ pointsBalance: users.pointsBalance })
-        .from(users)
-        .where(eq(users.id, user.id))
-        .limit(1)
-
-      if (currentUser) {
-        await db
-          .update(users)
-          .set({ 
-            pointsBalance: (currentUser.pointsBalance || 0) - entryCost,
-            updatedAt: new Date()
-          })
-          .where(eq(users.id, user.id))
-
-        // Create points transaction record
-        await db
-          .insert(pointsTransactions)
-          .values({
-            userId: user.id,
-            type: 'spent',
-            amount: -entryCost,
-            description: `Giveaway entry: ${giveaway.title}`,
-            referenceId: giveawayId,
-            referenceType: 'giveaway'
-          })
-      }
-    }
 
     return successResponse({
       entry: newEntry,
@@ -153,7 +114,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         title: giveaway.title,
         endDate: giveaway.endDate
       },
-      pointsDeducted: entryData.entryMethod === 'points' ? entryCost : 0
+      message: entryType === 'free' 
+        ? 'Successfully entered giveaway with your free entry!' 
+        : 'Successfully entered giveaway!'
     }, 'Successfully entered giveaway')
 
   } catch (error) {
@@ -161,7 +124,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 }
 
-// GET - Get user's entry status
+// GET - Get user's entry status and all entries
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: giveawayId } = await params
@@ -175,7 +138,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         status: giveaways.status,
         startDate: giveaways.startDate,
         endDate: giveaways.endDate,
-        maxEntries: giveaways.maxEntries
+        maxEntries: giveaways.maxEntries,
+        additionalEntryPrice: giveaways.additionalEntryPrice
       })
       .from(giveaways)
       .where(eq(giveaways.id, giveawayId))
@@ -185,15 +149,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return notFoundResponse('Giveaway not found')
     }
 
-    // Get user's entry if exists
-    const [userEntry] = await db
+    // Check membership
+    const membershipCheck = await checkActiveMembership(user.id)
+    const hasMembership = membershipCheck.isActive
+
+    // Get all user's entries for this giveaway
+    const userEntries = await db
       .select()
       .from(giveawayEntries)
       .where(and(
         eq(giveawayEntries.giveawayId, giveawayId),
         eq(giveawayEntries.userId, user.id)
       ))
-      .limit(1)
+
+    // Check if user has used free entry
+    const hasFreeEntry = userEntries.some(entry => entry.entryType === 'free')
+    const purchasedEntriesCount = userEntries.filter(entry => entry.entryType === 'purchased').length
 
     // Get total entries count
     const [totalEntries] = await db
@@ -202,7 +173,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .where(eq(giveawayEntries.giveawayId, giveawayId))
 
     const now = new Date()
-    const canEnter = !userEntry && 
+    const canEnter = hasMembership && 
                     giveaway.status === 'active' && 
                     giveaway.startDate <= now && 
                     giveaway.endDate > now &&
@@ -210,13 +181,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return successResponse({
       giveaway,
-      userEntry: userEntry || null,
+      hasMembership,
+      userEntries: userEntries.map(entry => ({
+        id: entry.id,
+        entryNumber: entry.entryNumber,
+        entryType: entry.entryType,
+        purchasePrice: entry.purchasePrice,
+        createdAt: entry.createdAt
+      })),
+      hasFreeEntry,
+      purchasedEntriesCount,
+      totalUserEntries: userEntries.length,
       canEnter,
+      canPurchaseMore: canEnter && hasFreeEntry, // Can purchase more if they've used free entry
       totalEntries: totalEntries.count,
+      additionalEntryPrice: giveaway.additionalEntryPrice,
       timeRemaining: giveaway.endDate > now ? giveaway.endDate.getTime() - now.getTime() : 0
     }, 'Entry status retrieved successfully')
 
   } catch (error) {
     return handleApiError(error)
   }
-} 
+}

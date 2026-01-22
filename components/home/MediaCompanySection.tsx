@@ -14,7 +14,7 @@ export const MediaCompanySection = () => {
   const handlePlayClick = () => {
     openVideoModal({
       videoSrc: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/f8-lifted-tournement.mp4",
-      title: "F8 Lifted Tournament",
+      title: "F48 Lifted Trucks Tournament",
       description: "Professional bass fishing tournament coverage",
       category: "Tournament",
     });
@@ -62,8 +62,8 @@ export const MediaCompanySection = () => {
 
               <PolaroidFrame
                     videoSrc="https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/f8-lifted-tournement.mp4"
-                    videoAlt="Fishin48 Tournament"
-                    caption="Fishin48 Tournament"
+                    videoAlt="F48 Lifted Trucks Tournament"
+                    caption="F48 Lifted Trucks Tournament"
                     bgColor="bg-polaroid"
                     rotation="2deg"
                   >

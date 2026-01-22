@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { db, giveaways, users } from '@/lib/db'
+import { db, giveaways, giveawayEntries, users } from '@/lib/db'
 import { eq, desc, asc, and, or, like, gte, lte, count } from 'drizzle-orm'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { successResponse, errorResponse, validationErrorResponse, handleApiError } from '@/lib/api-response'
@@ -88,6 +88,21 @@ export async function GET(request: NextRequest) {
 
     const giveawaysList = await giveawaysQuery
 
+    // Get entry counts for each giveaway
+    const giveawaysWithCounts = await Promise.all(
+      giveawaysList.map(async (giveaway) => {
+        const [entryCount] = await db
+          .select({ count: count() })
+          .from(giveawayEntries)
+          .where(eq(giveawayEntries.giveawayId, giveaway.id))
+
+        return {
+          ...giveaway,
+          entryCount: entryCount.count
+        }
+      })
+    )
+
     // Get total count for pagination
     const [totalCount] = await db
       .select({ count: count(giveaways.id) })
@@ -97,7 +112,7 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(totalCount.count / limit)
 
     return successResponse({
-      giveaways: giveawaysList,
+      giveaways: giveawaysWithCounts,
       pagination: {
         page,
         limit,
@@ -144,6 +159,26 @@ export async function POST(request: NextRequest) {
       initialStatus = 'active'
     } else if (endDate <= now) {
       initialStatus = 'ended'
+    }
+
+    // If setting to active, ensure no other active giveaways exist
+    if (initialStatus === 'active') {
+      // Find any existing active giveaways
+      const existingActive = await db
+        .select({ id: giveaways.id })
+        .from(giveaways)
+        .where(eq(giveaways.status, 'active'))
+
+      // Set all existing active giveaways to 'ended'
+      if (existingActive.length > 0) {
+        await db
+          .update(giveaways)
+          .set({
+            status: 'ended',
+            updatedAt: new Date()
+          })
+          .where(eq(giveaways.status, 'active'))
+      }
     }
 
     // Create giveaway

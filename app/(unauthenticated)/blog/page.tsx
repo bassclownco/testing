@@ -1,27 +1,14 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { useState, useEffect } from 'react';
 import Image from "next/image";
 import Link from "next/link";
-import { Calendar, User, Tag, Clock, Star } from "lucide-react";
+import { Calendar, User, Tag } from "lucide-react";
 import { CTASection } from '@/components/home/CTASection';
 import HookLine from "@/components/HookLine";
-import BassFishy from "@/components/BassFishy";
-import Bubbles from "@/components/Bubbles";
+import { Skeleton } from '@/components/ui/skeleton';
 
-export const metadata: Metadata = {
-  title: 'Blog',
-  description: 'Expert tips, industry insights, and behind-the-scenes content from the Bass Clown Co team.',
-  alternates: {
-    canonical: 'https://bassclown.com/blog',
-  },
-  robots: {
-    index: false,
-    follow: false,
-    googleBot: {
-      index: false,
-      follow: false,
-    },
-  },
-};
+// Metadata moved to layout or removed for client component
 
 // TODO: Replace with API call to fetch blog posts
 // const blogPosts: any[] = []; // Empty - ready for blog posts API
@@ -95,7 +82,35 @@ const categories = [
 ];
 
 export default function Blog() {
-  const blogPosts: any[] = []; // Empty - ready for blog posts API
+  const [blogPosts, setBlogPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/blog?published=true&limit=50', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch blog posts');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.posts) {
+        setBlogPosts(result.data.posts);
+      }
+    } catch (error) {
+      console.error('Error fetching blog posts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
@@ -123,7 +138,25 @@ export default function Blog() {
       
       {/* Main Blog Content Area */}
       <section className="container mx-auto px-4 py-12 md:py-16">
-        {blogPosts.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+            <div className="md:col-span-2 space-y-12">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-[#2D2D2D] rounded-lg overflow-hidden">
+                  <Skeleton className="h-60 w-full" />
+                  <div className="p-6 md:p-8">
+                    <Skeleton className="h-6 w-3/4 mb-4" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-5/6" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <aside className="md:col-span-1">
+              <Skeleton className="h-64 w-full rounded-lg" />
+            </aside>
+          </div>
+        ) : blogPosts.length === 0 ? (
           <div className="text-center py-16">
             <h2 className="text-3xl font-phosphate text-cream mb-4 title-text">Blog Coming Soon!</h2>
             <p className="text-cream/80 text-lg mb-8 max-w-2xl mx-auto">
@@ -139,36 +172,45 @@ export default function Blog() {
                 <div className="grid grid-cols-1 gap-12">
                   {blogPosts.map((post) => (
                     <div key={post.id} className="bg-[#2D2D2D] rounded-lg overflow-hidden shadow-xl">
-                      <div className="relative h-60">
-                        <Image
-                          src={post.image}
-                          alt={post.title}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      </div>
+                      {post.featuredImage && (
+                        <div className="relative h-60">
+                          <Image
+                            src={post.featuredImage}
+                            alt={post.title}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            unoptimized
+                          />
+                        </div>
+                      )}
                       <div className="p-6 md:p-8">
                         <div className="flex flex-wrap items-center mb-4 text-sm text-cream/70">
                           <div className="flex items-center mr-4 mb-1 md:mb-0">
                             <Calendar className="h-4 w-4 mr-1.5 text-red-500" />
-                            {post.date}
+                            {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : new Date(post.createdAt).toLocaleDateString()}
                           </div>
-                          <div className="flex items-center mr-4 mb-1 md:mb-0">
-                            <User className="h-4 w-4 mr-1.5 text-red-500" />
-                            {post.author}
-                          </div>
-                          <div className="flex items-center">
-                            <Tag className="h-4 w-4 mr-1.5 text-red-500" />
-                            {post.category}
-                          </div>
+                          {post.authorName && (
+                            <div className="flex items-center mr-4 mb-1 md:mb-0">
+                              <User className="h-4 w-4 mr-1.5 text-red-500" />
+                              {post.authorName}
+                            </div>
+                          )}
+                          {post.category && (
+                            <div className="flex items-center">
+                              <Tag className="h-4 w-4 mr-1.5 text-red-500" />
+                              {post.category}
+                            </div>
+                          )}
                         </div>
                         <h2 className="text-2xl md:text-3xl font-phosphate text-cream mb-3 title-text hover:text-red-500 transition-colors">
-                          <Link href={`/blog/${post.id}`}>{post.title}</Link>
+                          <Link href={`/blog/${post.slug}`}>{post.title}</Link>
                         </h2>
-                        <p className="text-cream/80 mb-6 leading-relaxed">{post.excerpt}</p>
+                        {post.excerpt && (
+                          <p className="text-cream/80 mb-6 leading-relaxed">{post.excerpt}</p>
+                        )}
                         <Link 
-                          href={`/blog/${post.id}`} 
+                          href={`/blog/${post.slug}`} 
                           className="inline-block bg-red-600 text-white font-phosphate py-2 px-6 rounded-md hover:bg-red-700 transition-colors text-lg"
                         >
                           Read More →

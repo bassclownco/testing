@@ -54,10 +54,6 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/blog",
   },
   {
-    label: "STORE",
-    href: "/store",
-  },
-  {
     label: "CONTACT US",
     href: "/contact",
   },
@@ -165,7 +161,7 @@ export const SERVICE_BLOCKS: ServiceBlock[] = [
     description: "Strategy moves rapidly. Results may include increased sales and soaring laughter. This isn't your uncle's Facebook ad campaign. We blend creative strategy with on-the-water street smarts to build marketing plans that actually speak to anglers... and anyone else brave enough to forget them. From digital ads to influencer campaigns to launching your brand like a shaky head into cover, we've got you covered.",
     bannerColor: "orange",
     polaroidVideo: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/f8-lifted-tournement.mp4",
-    polaroidCaption: "Fishin48 Tournament",
+    polaroidCaption: "F48 Lifted Trucks Tournament",
     icon: "/images/assets/film-reel-icon.svg",
     expandedDescription: "We don't just throw marketing spaghetti at the wall to see what sticks (though we do love a good fishing pasta metaphor). Our marketing strategies are built on data, insights, and a deep understanding of what makes anglers tick. We know the difference between a weekend warrior and a tournament pro, and we craft messages that resonate with each audience.\n\nOur services include social media management, influencer partnerships, email marketing campaigns, and paid advertising across all major platforms. We track everything from engagement rates to conversion metrics, ensuring every dollar spent is working as hard as a bass boat motor on tournament day.\n\nThe result? Marketing that doesn't feel like marketing. Content that educates, entertains, and ultimately drives sales. Because the best marketing doesn't feel like you're being sold to - it feels like you're getting let in on the best-kept secret in fishing.",
   },
@@ -174,7 +170,7 @@ export const SERVICE_BLOCKS: ServiceBlock[] = [
     description: "Your brand new best friend - with a very specific sense of humor. From the way your logo looks to the way your brand talks, we'll help fine-tune your identity until it stands out like a chartreuse crankbait in a mud hole. We're here to steer the ship, shape the vibe, and make sure your brand doesn't disappear in the 'sea of meh' fishing companies trying to be the next big thing.",
     bannerColor: "blue",
     polaroidVideo: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/bajio-test.mp4",
-    polaroidCaption: "Bajio Sunglasses",
+    polaroidCaption: "Bajio",
     icon: "/images/assets/film-reel-icon.svg",
   },
   {
@@ -182,7 +178,7 @@ export const SERVICE_BLOCKS: ServiceBlock[] = [
     description: "We write words that make your brand sound like it has a pulse. We write things so you don't have to. Website copy, social posts, ads, brand voice - whatever it is, we'll wordsmith the heck out of it. Equal parts smart and stupid (in the best way), we'll make sure your message comes through loud, clear, and catchy enough to make people stop scrolling mid-scroll.",
     bannerColor: "blue",
     polaroidVideo: "https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/wb-derby-reel.mp4",
-    polaroidCaption: "Wicked Bass Derby Reel",
+    polaroidCaption: "WICKEDBASS Derby Reel",
     icon: "/images/assets/film-reel-icon.svg",
   },
   {

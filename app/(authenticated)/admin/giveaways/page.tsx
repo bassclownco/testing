@@ -1,9 +1,13 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Gift, Users, Calendar, DollarSign } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Gift, Users, Calendar, DollarSign, Loader2 } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -14,72 +18,98 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 
-// Mock data for giveaways
-const giveaways = [
-  {
-    id: '1',
-    title: 'Premium Rod Giveaway',
-    type: 'Product Giveaway',
-    status: 'active',
-    startDate: '2024-01-15',
-    endDate: '2024-02-15',
-    entries: 1250,
-    maxEntries: 2000,
-    prizeValue: 500,
-    brand: 'Rod Masters',
-    winner: null,
-  },
-  {
-    id: '2',
-    title: 'Fishing Gear Bundle',
-    type: 'Bundle Giveaway',
-    status: 'drawing',
-    startDate: '2024-01-01',
-    endDate: '2024-01-31',
-    entries: 890,
-    maxEntries: 1000,
-    prizeValue: 1200,
-    brand: 'Tackle Pro',
-    winner: null,
-  },
-  {
-    id: '3',
-    title: 'Bass Boat Adventure',
-    type: 'Experience Giveaway',
-    status: 'completed',
-    startDate: '2023-12-01',
-    endDate: '2024-01-10',
-    entries: 2340,
-    maxEntries: 2500,
-    prizeValue: 5000,
-    brand: 'Boat Adventures',
-    winner: 'John Fisher',
-  },
-  {
-    id: '4',
-    title: 'Fishing Course Access',
-    type: 'Digital Giveaway',
-    status: 'draft',
-    startDate: '2024-02-01',
-    endDate: '2024-03-01',
-    entries: 0,
-    maxEntries: 500,
-    prizeValue: 200,
-    brand: 'Learn Fishing',
-    winner: null,
-  },
-];
+interface Giveaway {
+  id: string;
+  title: string;
+  description: string;
+  prizeValue: string;
+  maxEntries: number | null;
+  entryCount: number;
+  startDate: string;
+  endDate: string;
+  status: string;
+  sponsor: string | null;
+  createdAt: string;
+}
 
 export default function GiveawaysPage() {
+  const [giveaways, setGiveaways] = useState<Giveaway[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    totalEntries: 0,
+    totalPrizeValue: 0
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    fetchGiveaways();
+  }, []);
+
+  const fetchGiveaways = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/giveaways?limit=100', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch giveaways');
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data?.giveaways) {
+        const giveawaysList = result.data.giveaways.map((g: any) => ({
+          id: g.id,
+          title: g.title,
+          description: g.description,
+          prizeValue: g.prizeValue,
+          maxEntries: g.maxEntries,
+          entryCount: g.entryCount || 0,
+          startDate: g.startDate,
+          endDate: g.endDate,
+          status: g.status,
+          sponsor: g.sponsor,
+          createdAt: g.createdAt
+        }));
+
+        setGiveaways(giveawaysList);
+
+        // Calculate stats
+        const total = giveawaysList.length;
+        const active = giveawaysList.filter((g: Giveaway) => g.status === 'active').length;
+        const totalEntries = giveawaysList.reduce((sum: number, g: Giveaway) => sum + g.entryCount, 0);
+        const totalPrizeValue = giveawaysList.reduce((sum: number, g: Giveaway) => {
+          const value = parseFloat(g.prizeValue.replace(/[^0-9.]/g, '')) || 0;
+          return sum + value;
+        }, 0);
+
+        setStats({ total, active, totalEntries, totalPrizeValue });
+      }
+    } catch (error) {
+      console.error('Error fetching giveaways:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'default';
-      case 'drawing': return 'secondary';
+      case 'upcoming': return 'secondary';
+      case 'ended': return 'outline';
       case 'completed': return 'outline';
       case 'draft': return 'destructive';
       default: return 'secondary';
     }
   };
+
+  const filteredGiveaways = giveaways.filter(giveaway =>
+    giveaway.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (giveaway.sponsor && giveaway.sponsor.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <div className="space-y-6">
@@ -97,51 +127,70 @@ export default function GiveawaysPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Giveaways</CardTitle>
-            <Gift className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">89</div>
-            <p className="text-xs text-muted-foreground">+5 this month</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Giveaways</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">Currently running</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Entries</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">15,640</div>
-            <p className="text-xs text-muted-foreground">+890 this week</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Prize Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$78,500</div>
-            <p className="text-xs text-muted-foreground">Across all giveaways</p>
-          </CardContent>
-        </Card>
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Giveaways</CardTitle>
+              <Gift className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-muted-foreground">All time</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Giveaway</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.active}</div>
+              <p className="text-xs text-muted-foreground">Currently running</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Entries</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalEntries.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">Across all giveaways</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Giveaway Entries</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {giveaways.find(g => g.status === 'active')?.entryCount || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">Current giveaway</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Giveaways Table */}
       <Card>
@@ -154,104 +203,118 @@ export default function GiveawaysPage() {
               <Input 
                 placeholder="Search giveaways..." 
                 className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Giveaway</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Entries</TableHead>
-                <TableHead>Prize Value</TableHead>
-                <TableHead>Winner</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {giveaways.map((giveaway) => (
-                <TableRow key={giveaway.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{giveaway.title}</div>
-                      <div className="text-sm text-gray-600">{giveaway.brand}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{giveaway.type}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusColor(giveaway.status)}>
-                      {giveaway.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{giveaway.startDate}</div>
-                      <div className="text-gray-500">to {giveaway.endDate}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div className="font-medium">{giveaway.entries.toLocaleString()}</div>
-                      <div className="text-gray-500">of {giveaway.maxEntries.toLocaleString()}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>${giveaway.prizeValue.toLocaleString()}</TableCell>
-                  <TableCell>
-                    {giveaway.winner ? (
-                      <Badge variant="outline">{giveaway.winner}</Badge>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Giveaway
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          View Entries
-                        </DropdownMenuItem>
-                        {giveaway.status === 'drawing' && (
-                          <DropdownMenuItem>
-                            Select Winner
-                          </DropdownMenuItem>
-                        )}
-                        {giveaway.winner && (
-                          <DropdownMenuItem>
-                            Contact Winner
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          ) : filteredGiveaways.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Giveaway</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Entries</TableHead>
+                  <TableHead>Prize Value</TableHead>
+                  <TableHead>Sponsor</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredGiveaways.map((giveaway) => (
+                  <TableRow key={giveaway.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{giveaway.title}</div>
+                        <div className="text-sm text-gray-600 line-clamp-1">{giveaway.description}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(giveaway.status) as any}>
+                        {giveaway.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{new Date(giveaway.startDate).toLocaleDateString()}</div>
+                        <div className="text-gray-500">to {new Date(giveaway.endDate).toLocaleDateString()}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div className="font-medium">{giveaway.entryCount.toLocaleString()}</div>
+                        {giveaway.maxEntries && (
+                          <div className="text-gray-500">of {giveaway.maxEntries.toLocaleString()}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{giveaway.prizeValue}</TableCell>
+                    <TableCell>{giveaway.sponsor || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/giveaways/${giveaway.id}`}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/giveaways/${giveaway.id}/edit`}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Giveaway
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/giveaways/${giveaway.id}/entries`}>
+                              View Entries ({giveaway.entryCount})
+                            </Link>
+                          </DropdownMenuItem>
+                          {giveaway.status === 'active' && (
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/giveaways/${giveaway.id}/draw`}>
+                                Draw Winners
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-12">
+              <Gift className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">No giveaways found</p>
+              <Link href="/admin/giveaways/create">
+                <Button className="mt-4">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Giveaway
+                </Button>
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
-} 
+}

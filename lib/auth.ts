@@ -134,4 +134,44 @@ export function validatePassword(password: string): { isValid: boolean; message?
   }
   
   return { isValid: true }
+}
+
+/**
+ * Check if a user has an active paid membership subscription
+ * Membership is required for giveaways and contests
+ */
+export async function checkActiveMembership(userId: string): Promise<{ isActive: boolean; message?: string }> {
+  try {
+    const [user] = await db
+      .select({
+        subscription: users.subscription,
+        subscriptionStatus: users.subscriptionStatus,
+        subscriptionPeriodEnd: users.subscriptionPeriodEnd
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+
+    if (!user) {
+      return { isActive: false, message: 'User not found' }
+    }
+
+    const now = new Date()
+    const isActive = user.subscriptionStatus === 'active' && 
+                    user.subscriptionPeriodEnd && 
+                    user.subscriptionPeriodEnd > now &&
+                    (user.subscription === 'pro' || user.subscription === 'premium')
+
+    if (!isActive) {
+      return { 
+        isActive: false, 
+        message: 'Active membership subscription ($9.99/month) is required to enter giveaways and contests. Please upgrade your account.' 
+      }
+    }
+
+    return { isActive: true }
+  } catch (error) {
+    console.error('Error checking membership:', error)
+    return { isActive: false, message: 'Error checking membership status' }
+  }
 } 

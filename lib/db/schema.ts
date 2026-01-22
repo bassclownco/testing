@@ -49,6 +49,8 @@ export const contests = pgTable('contests', {
   description: text('description').notNull(),
   shortDescription: text('short_description'),
   image: text('image'),
+  brandLogo: text('brand_logo'), // Brand/Sponsor logo image URL
+  brandName: varchar('brand_name', { length: 255 }), // Brand/Sponsor name
   prize: varchar('prize', { length: 255 }).notNull(),
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
@@ -109,6 +111,7 @@ export const giveaways = pgTable('giveaways', {
   longDescription: text('long_description'),
   prizeValue: varchar('prize_value', { length: 100 }).notNull(),
   maxEntries: integer('max_entries'),
+  additionalEntryPrice: decimal('additional_entry_price', { precision: 10, scale: 2 }), // Price for additional entries (e.g., 5.00)
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
   status: varchar('status', { length: 50 }).default('upcoming').notNull(),
@@ -127,6 +130,9 @@ export const giveawayEntries = pgTable('giveaway_entries', {
   giveawayId: uuid('giveaway_id').references(() => giveaways.id).notNull(),
   userId: uuid('user_id').references(() => users.id).notNull(),
   entryNumber: integer('entry_number').notNull(),
+  entryType: varchar('entry_type', { length: 50 }).default('free').notNull(), // 'free' or 'purchased'
+  purchasePrice: decimal('purchase_price', { precision: 10, scale: 2 }), // Price paid for additional entries
+  stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }), // For purchased entries
   status: varchar('status', { length: 50 }).default('entered').notNull(),
   userResult: varchar('user_result', { length: 50 }),
   notificationSent: boolean('notification_sent').default(false),
@@ -652,6 +658,31 @@ export const portfolioVideos = pgTable('portfolio_videos', {
   displayOrder: integer('display_order').default(0), // order in portfolio grid
   published: boolean('published').default(true),
   views: integer('views').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+})
+
+// Blog Posts table
+export const blogPosts = pgTable('blog_posts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: varchar('title', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).unique().notNull(), // URL-friendly slug
+  excerpt: text('excerpt'), // Short summary for listings
+  content: text('content').notNull(), // Full blog post content (can include HTML)
+  featuredImage: text('featured_image'), // Main image URL
+  images: jsonb('images').$default(() => ([])), // Array of image URLs
+  videos: jsonb('videos').$default(() => ([])), // Array of video URLs with metadata
+  category: varchar('category', { length: 100 }).default('General'),
+  tags: jsonb('tags').$default(() => ([])), // Array of tag strings
+  authorId: uuid('author_id').references(() => users.id),
+  authorName: varchar('author_name', { length: 255 }), // Cached author name
+  published: boolean('published').default(false),
+  publishedAt: timestamp('published_at'), // When it was published
+  featured: boolean('featured').default(false), // Featured post
+  views: integer('views').default(0),
+  seoTitle: varchar('seo_title', { length: 255 }),
+  seoDescription: text('seo_description'),
+  metaKeywords: jsonb('meta_keywords').$default(() => ([])),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
 }) 

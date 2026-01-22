@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react';
 import { Contest } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import ContestCard from '@/components/contests/ContestCard';
-import { Search, Trophy, ArrowRight, Video, Camera, Edit } from 'lucide-react';
+import { Search, Trophy, ArrowRight, Video, Camera, Edit, Users, Calendar, Clock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { CTASection } from '@/components/home/CTASection';
 
 export default function ContentContestsPage() {
-  const [contests, setContests] = useState<Contest[]>([]);
+  const [contests, setContests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -38,37 +38,7 @@ export default function ContentContestsPage() {
       const result = await response.json();
 
       if (result.success && result.data?.contests) {
-        const transformedContests: Contest[] = result.data.contests.map((contest: any) => ({
-          id: contest.id,
-          title: contest.title,
-          description: contest.description || '',
-          shortDescription: contest.shortDescription || contest.description?.substring(0, 100) || '',
-          image: contest.image || '/images/assets/bass-clown-co-fish-chase.png',
-          prize: contest.prize || 'Prize TBD',
-          startDate: contest.startDate ? new Date(contest.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          endDate: contest.endDate ? new Date(contest.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          applicationDeadline: contest.applicationDeadline ? new Date(contest.applicationDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          submissionDeadline: contest.submissionDeadline ? new Date(contest.submissionDeadline).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          status: contest.status || 'open',
-          category: contest.category || 'General',
-          requirements: Array.isArray(contest.requirements) ? contest.requirements :
-                        typeof contest.requirements === 'object' && contest.requirements !== null
-                          ? Object.values(contest.requirements) as string[]
-                          : [],
-          judges: Array.isArray(contest.judges) ? contest.judges :
-                  typeof contest.judges === 'object' && contest.judges !== null
-                    ? Object.values(contest.judges) as string[]
-                    : [],
-          maxParticipants: contest.maxParticipants || 100,
-          currentParticipants: contest.currentParticipants || 0,
-          rules: contest.rules || '',
-          submissionGuidelines: contest.submissionGuidelines || '',
-          createdBy: contest.createdBy || contest.creatorName || 'Bass Clown Co',
-          createdAt: contest.createdAt ? new Date(contest.createdAt).toISOString() : new Date().toISOString(),
-          updatedAt: contest.updatedAt ? new Date(contest.updatedAt).toISOString() : new Date().toISOString()
-        }));
-
-        setContests(transformedContests);
+        setContests(result.data.contests);
       }
     } catch (error) {
       console.error('Error fetching contests:', error);
@@ -77,9 +47,9 @@ export default function ContentContestsPage() {
     }
   };
 
-  const filteredContests = contests.filter(contest => {
-    const matchesSearch = contest.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contest.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredContests = contests.filter((contest: any) => {
+    const matchesSearch = contest.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         contest.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || contest.category === selectedCategory;
     const matchesStatus = selectedStatus === 'all' || contest.status === selectedStatus;
     
@@ -88,6 +58,31 @@ export default function ContentContestsPage() {
 
   const categories = ['all', 'Video Production', 'Photography', 'Writing'];
   const statuses = ['all', 'open', 'upcoming', 'closed'];
+
+  const handleApply = async (contestId: string) => {
+    // Check membership first
+    try {
+      const response = await fetch(`/api/contests/${contestId}/apply`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        if (result.message?.includes('membership')) {
+          alert('Membership required: You must have an active membership ($9.99/month) to apply to contests.');
+          return;
+        }
+      }
+
+      // Redirect to apply page
+      window.location.href = `/contests/${contestId}/apply`;
+    } catch (error) {
+      console.error('Error checking application status:', error);
+      // Still redirect - the apply page will handle membership check
+      window.location.href = `/contests/${contestId}/apply`;
+    }
+  };
 
   return (
     <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
@@ -110,62 +105,6 @@ export default function ContentContestsPage() {
       </section>
       
       <section className="container mx-auto px-4 py-12 md:py-16">
-
- 
-        {/* Stats Cards */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="bg-[#2D2D2D] border-slate-700">
-                <CardContent className="flex items-center p-6">
-                  <Skeleton className="h-8 w-8 mr-3" />
-                  <div>
-                    <Skeleton className="h-6 w-12 mb-2" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card className="bg-[#2D2D2D] border-slate-700">
-              <CardContent className="flex items-center p-6">
-                <Video className="h-8 w-8 text-blue-400 mr-3" />
-                <div>
-                  <p className="text-2xl font-bold text-cream">
-                    {contests.filter(c => c.category === 'Video Production').length}
-                  </p>
-                  <p className="text-sm text-cream/60">Video Contests</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-[#2D2D2D] border-slate-700">
-              <CardContent className="flex items-center p-6">
-                <Camera className="h-8 w-8 text-green-400 mr-3" />
-                <div>
-                  <p className="text-2xl font-bold text-cream">
-                    {contests.filter(c => c.category === 'Photography').length}
-                  </p>
-                  <p className="text-sm text-cream/60">Photo Contests</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-[#2D2D2D] border-slate-700">
-              <CardContent className="flex items-center p-6">
-                <Edit className="h-8 w-8 text-purple-400 mr-3" />
-                <div>
-                  <p className="text-2xl font-bold text-cream">
-                    {contests.filter(c => c.category === 'Writing').length}
-                  </p>
-                  <p className="text-sm text-cream/60">Writing Contests</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-
         {/* Search and Filters */}
         <Card className="mb-8 bg-[#2D2D2D] border-slate-700">
           <CardContent className="p-6">
@@ -209,29 +148,156 @@ export default function ContentContestsPage() {
           </CardContent>
         </Card>
 
-        {/* Contest Grid */}
+        {/* Contest List - Left Side Layout */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
-                <Skeleton className="aspect-video w-full" />
-                <CardHeader>
-                  <Skeleton className="h-6 w-3/4 mb-2" />
-                  <Skeleton className="h-4 w-full" />
-                </CardHeader>
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-[#2D2D2D] border-slate-700">
+                <CardContent className="p-6">
+                  <div className="flex gap-6">
+                    <Skeleton className="w-48 h-48" />
+                    <div className="flex-1 space-y-4">
+                      <Skeleton className="h-8 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                  </div>
+                </CardContent>
               </Card>
             ))}
           </div>
         ) : filteredContests.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredContests.map((contest) => (
-              <ContestCard key={contest.id} contest={contest} />
-            ))}
-          </div>
-        ) : null}
+          <div className="space-y-6">
+            {filteredContests.map((contest: any) => {
+              const applicationDeadline = contest.applicationDeadline ? new Date(contest.applicationDeadline) : null;
+              const endDate = contest.endDate ? new Date(contest.endDate) : null;
+              const isApplicationDeadlinePassed = applicationDeadline ? new Date() > applicationDeadline : false;
+              const isOpen = contest.status === 'open' && !isApplicationDeadlinePassed;
 
-        {/* Empty State */}
-        {!loading && filteredContests.length === 0 && (
+              return (
+                <Card key={contest.id} className="bg-[#2D2D2D] border-slate-700 overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex flex-col md:flex-row">
+                      {/* Left Side - Brand Logo, Host, Contest Image */}
+                      <div className="md:w-1/3 lg:w-1/4 p-6 bg-slate-800/50 flex flex-col items-center justify-center space-y-4">
+                        {contest.brandLogo && (
+                          <div className="relative w-32 h-32 mb-4">
+                            <Image
+                              src={contest.brandLogo}
+                              alt={contest.brandName || 'Brand Logo'}
+                              fill
+                              className="object-contain"
+                              unoptimized
+                            />
+                          </div>
+                        )}
+                        {contest.brandName && (
+                          <p className="text-sm text-cream/60 text-center">{contest.brandName}</p>
+                        )}
+                        {contest.image && (
+                          <div className="relative w-full aspect-video mt-4 rounded-lg overflow-hidden">
+                            <Image
+                              src={contest.image}
+                              alt={contest.title}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Side - Contest Details */}
+                      <div className="md:w-2/3 lg:w-3/4 p-6 flex flex-col">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h2 className="text-2xl md:text-3xl font-phosphate text-cream title-text">
+                                {contest.title}
+                              </h2>
+                              <Badge 
+                                variant={contest.status === 'open' ? 'default' : 'secondary'}
+                                className={contest.status === 'open' ? 'bg-green-600' : ''}
+                              >
+                                {contest.status === 'open' ? 'Open' : contest.status}
+                              </Badge>
+                            </div>
+                            {contest.category && (
+                              <Badge variant="outline" className="text-cream border-cream/30">
+                                {contest.category}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {contest.description && (
+                          <div 
+                            className="text-cream/80 mb-4 prose prose-invert max-w-none"
+                            dangerouslySetInnerHTML={{ 
+                              __html: contest.shortDescription || contest.description.substring(0, 200) + '...' 
+                            }}
+                          />
+                        )}
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                          <div className="flex items-center gap-2 text-cream/70">
+                            <Trophy className="h-4 w-4 text-red-500" />
+                            <span className="font-semibold">Prize:</span>
+                            <span>{contest.prize || 'TBD'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-cream/70">
+                            <Users className="h-4 w-4 text-red-500" />
+                            <span>{contest.currentParticipants || 0} / {contest.maxParticipants || '∞'}</span>
+                          </div>
+                          {applicationDeadline && (
+                            <div className="flex items-center gap-2 text-cream/70">
+                              <Calendar className="h-4 w-4 text-red-500" />
+                              <span>Apply by: {applicationDeadline.toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {endDate && (
+                            <div className="flex items-center gap-2 text-cream/70">
+                              <Clock className="h-4 w-4 text-red-500" />
+                              <span>Ends: {endDate.toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-3 mt-auto">
+                          <Button
+                            variant="outline"
+                            asChild
+                            className="bg-slate-700 border-slate-600 text-cream hover:bg-slate-600"
+                          >
+                            <Link href={`/contests/${contest.id}`}>
+                              View Details
+                            </Link>
+                          </Button>
+                          
+                          {isOpen && (
+                            <Button
+                              onClick={() => handleApply(contest.id)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Apply Now
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="mt-4 p-3 bg-blue-600/20 border border-blue-500/30 rounded-lg">
+                          <p className="text-xs text-blue-300">
+                            <strong>Membership Required:</strong> You must have an active membership ($9.99/month) to apply to contests.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
           <div className="text-center py-12">
             <Trophy className="h-16 w-16 text-cream/40 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-cream mb-2">
@@ -257,7 +323,6 @@ export default function ContentContestsPage() {
             )}
           </div>
         )}
-
 
         {/* Call to Action */}
         <div className="mt-16 text-center">

@@ -1,329 +1,369 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, Clock, Gift, Users, Search, Filter, Trophy, ArrowRight, Star } from 'lucide-react';
-import Link from 'next/link';
+import { Calendar, Clock, Gift, Users, AlertCircle, Crown, Loader2, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
-import { GiveawayCard } from '@/components/giveaways/GiveawayCard';
+import { GiveawayEntryForm } from '@/components/giveaways/GiveawayEntryForm';
 import { Giveaway } from '@/lib/types';
 import { CTASection } from '@/components/home/CTASection';
+import Link from 'next/link';
 
 export default function GiveawaysPage() {
-  const [giveaways, setGiveaways] = useState<Giveaway[]>([]);
+  const [giveaway, setGiveaway] = useState<Giveaway | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [error, setError] = useState<string | null>(null);
+  const [userEntries, setUserEntries] = useState(0);
+  const [additionalEntryPrice, setAdditionalEntryPrice] = useState<number | null>(null);
+  const [purchasingEntries, setPurchasingEntries] = useState(false);
 
   useEffect(() => {
-    fetchGiveaways();
+    fetchActiveGiveaway();
   }, []);
 
-  const fetchGiveaways = async () => {
+  const fetchActiveGiveaway = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/giveaways?limit=100&status=active', {
+      setError(null);
+      const response = await fetch('/api/giveaways?limit=1&status=active', {
         credentials: 'include'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch giveaways');
+        throw new Error('Failed to fetch giveaway');
       }
 
       const result = await response.json();
 
-      if (result.success && result.data?.giveaways) {
-        // Transform API data to match Giveaway type
-        const transformedGiveaways: Giveaway[] = result.data.giveaways.map((giveaway: any) => ({
-          id: giveaway.id,
-          title: giveaway.title,
-          description: giveaway.description || '',
-          longDescription: giveaway.longDescription,
-          prizeValue: giveaway.prizeValue || 'Prize TBD',
-          entryCount: 0, // Will be fetched separately if needed
-          maxEntries: giveaway.maxEntries || null,
-          startDate: giveaway.startDate ? new Date(giveaway.startDate) : new Date(),
-          endDate: giveaway.endDate ? new Date(giveaway.endDate) : new Date(),
-          status: (giveaway.status || 'upcoming') as 'active' | 'upcoming' | 'ended',
-          image: giveaway.image || '/images/assets/bass-clown-co-fish-chase.png',
-          rules: Array.isArray(giveaway.rules) ? giveaway.rules : 
-                 typeof giveaway.rules === 'object' && giveaway.rules !== null
-                   ? Object.values(giveaway.rules) as string[]
+      if (result.success && result.data?.giveaways && result.data.giveaways.length > 0) {
+        const giveawayData = result.data.giveaways[0];
+        const transformedGiveaway: Giveaway = {
+          id: giveawayData.id,
+          title: giveawayData.title,
+          description: giveawayData.description || '',
+          longDescription: giveawayData.longDescription,
+          prizeValue: giveawayData.prizeValue || 'Prize TBD',
+          entryCount: giveawayData.entryCount || 0,
+          maxEntries: giveawayData.maxEntries || null,
+          startDate: giveawayData.startDate ? new Date(giveawayData.startDate) : new Date(),
+          endDate: giveawayData.endDate ? new Date(giveawayData.endDate) : new Date(),
+          status: (giveawayData.status || 'active') as 'active' | 'upcoming' | 'ended',
+          image: giveawayData.image || '/images/assets/bass-clown-co-fish-chase.png',
+          rules: Array.isArray(giveawayData.rules) ? giveawayData.rules : 
+                 typeof giveawayData.rules === 'object' && giveawayData.rules !== null
+                   ? Object.values(giveawayData.rules) as string[]
                    : [],
-          prizeItems: Array.isArray(giveaway.prizeItems) ? giveaway.prizeItems : [],
-          category: 'Gear', // Default category, could be derived from giveaway data
-          sponsor: giveaway.sponsor,
-          createdBy: giveaway.createdBy,
-          createdAt: giveaway.createdAt ? new Date(giveaway.createdAt).toISOString() : new Date().toISOString(),
-          updatedAt: giveaway.updatedAt ? new Date(giveaway.updatedAt).toISOString() : new Date().toISOString()
-        }));
-
-        setGiveaways(transformedGiveaways);
+          prizeItems: Array.isArray(giveawayData.prizeItems) ? giveawayData.prizeItems : [],
+          category: giveawayData.category || 'Gear',
+          sponsor: giveawayData.sponsor,
+          createdBy: giveawayData.createdBy,
+          createdAt: giveawayData.createdAt ? new Date(giveawayData.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: giveawayData.updatedAt ? new Date(giveawayData.updatedAt).toISOString() : new Date().toISOString()
+        };
+        setGiveaway(transformedGiveaway);
+        setAdditionalEntryPrice(giveawayData.additionalEntryPrice ? parseFloat(giveawayData.additionalEntryPrice) : null);
+        fetchUserEntries(giveawayData.id);
+      } else {
+        setGiveaway(null);
       }
-    } catch (error) {
-      console.error('Error fetching giveaways:', error);
-      // Fallback to empty array - will show empty state
-      setGiveaways([]);
+    } catch (err) {
+      console.error('Error fetching giveaway:', err);
+      setError('Failed to load giveaway. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredGiveaways = giveaways.filter(giveaway => {
-    const matchesSearch = giveaway.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         giveaway.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === 'all' || giveaway.status === selectedStatus;
-    const matchesCategory = selectedCategory === 'all' || (giveaway.category && giveaway.category === selectedCategory);
-    
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
+  const fetchUserEntries = async (giveawayId: string) => {
+    try {
+      const response = await fetch(`/api/giveaways/${giveawayId}/entries`, {
+        credentials: 'include'
+      });
 
-  const gearCount = giveaways.filter(g => g.category === 'Gear').length;
-  const experiencesCount = giveaways.filter(g => g.category === 'Experiences').length;
-  const equipmentCount = giveaways.filter(g => g.category === 'Equipment').length;
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data?.entries) {
+          setUserEntries(result.data.entries.length);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching user entries:', err);
+    }
+  };
 
-  const categories = ['all', 'Gear', 'Experiences', 'Equipment'];
+  const handleEntrySuccess = () => {
+    if (giveaway) {
+      fetchUserEntries(giveaway.id);
+      fetchActiveGiveaway(); // Refresh to update entry count
+    }
+  };
+
+  const handlePurchaseEntries = async (quantity: number = 1) => {
+    if (!giveaway || !additionalEntryPrice) return;
+
+    setPurchasingEntries(true);
+    try {
+      const response = await fetch(`/api/giveaways/${giveaway.id}/purchase-entry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ quantity })
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.message || 'Failed to purchase entries');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        handleEntrySuccess();
+        alert(`Successfully purchased ${quantity} additional ${quantity === 1 ? 'entry' : 'entries'}!`);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to purchase entries';
+      alert(errorMessage);
+    } finally {
+      setPurchasingEntries(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream">
+        <section className="container mx-auto px-4 py-12 md:py-16">
+          <Skeleton className="h-96 w-full mb-8" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Skeleton className="h-64" />
+            <Skeleton className="h-64" />
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream">
+        <section className="container mx-auto px-4 py-12 md:py-16 text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Error Loading Giveaway</h2>
+          <p className="text-cream/60 mb-6">{error}</p>
+          <Button onClick={fetchActiveGiveaway}>Try Again</Button>
+        </section>
+      </main>
+    );
+  }
+
+  if (!giveaway) {
+    return (
+      <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream">
+        <section className="container mx-auto px-4 py-12 md:py-16 text-center">
+          <Gift className="h-16 w-16 text-cream/40 mx-auto mb-4" />
+          <h1 className="text-4xl font-phosphate text-cream mb-4 title-text">No Active Giveaway</h1>
+          <p className="text-cream/60 text-lg mb-8 max-w-2xl mx-auto">
+            There's no active giveaway at the moment. Check back soon for exciting prizes!
+          </p>
+          <Button asChild>
+            <Link href="/">Return Home</Link>
+          </Button>
+        </section>
+        <CTASection />
+      </main>
+    );
+  }
+
+  const timeRemaining = giveaway.endDate.getTime() - Date.now();
+  const daysRemaining = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+  const hoursRemaining = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
   return (
-    <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
-      {/* Hero Section */}
-      <section 
-        id="giveaways-hero" 
-        className="relative min-h-[50vh] md:min-h-[40vh] flex flex-col items-center justify-center overflow-hidden py-16 md:py-20 px-4"
-        style={{ backgroundColor: '#2C3E50' }}
-      >
-        <div className="absolute inset-0 bg-black/30 z-[1]"></div>
-        <div className="container mx-auto px-4 relative z-10 flex flex-col items-center justify-center text-center">
+    <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream">
+      {/* Hero Section with Giveaway Image */}
+      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+        {giveaway.image && (
+          <div className="absolute inset-0 z-0">
+            <Image
+              src={giveaway.image}
+              alt={giveaway.title}
+              fill
+              className="object-cover"
+              priority
+              unoptimized
+            />
+            <div className="absolute inset-0 bg-black/60 z-10"></div>
+          </div>
+        )}
+        <div className="container mx-auto px-4 relative z-20 text-center">
           <h1 className="font-phosphate text-5xl md:text-7xl tracking-wider text-cream uppercase mb-4 text-shadow-lg title-text">
-            FISHING GIVEAWAYS
+            {giveaway.title}
           </h1>
-          <p className="text-lg md:text-xl tracking-wide text-cream/90 font-phosphate max-w-3xl title-text">
-            Enter our exciting giveaways for a chance to win amazing fishing gear, equipment, and exclusive experiences.
-          </p>
+          {giveaway.description && (
+            <p className="text-xl md:text-2xl text-cream/90 font-phosphate max-w-3xl mx-auto mb-6 title-text">
+              {giveaway.description}
+            </p>
+          )}
+          <div className="flex items-center justify-center gap-6 text-cream/80">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              <span>{daysRemaining > 0 ? `${daysRemaining}d ${hoursRemaining}h` : `${hoursRemaining}h`} remaining</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              <span>{giveaway.entryCount} {giveaway.entryCount === 1 ? 'entry' : 'entries'}</span>
+            </div>
+          </div>
         </div>
       </section>
-      
+
+      {/* Main Content */}
       <section className="container mx-auto px-4 py-12 md:py-16">
-        {/* Stats Cards */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="bg-[#2D2D2D] border-slate-700">
-                <CardContent className="flex items-center p-6">
-                  <Skeleton className="h-8 w-8 mr-3" />
-                  <div>
-                    <Skeleton className="h-6 w-12 mb-2" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+          {/* Left Column - Giveaway Details */}
+          <div className="space-y-6">
+            {giveaway.longDescription && (
+              <Card className="bg-[#2D2D2D] border-slate-700">
+                <CardContent className="p-6">
+                  <h2 className="text-2xl font-phosphate text-cream mb-4 title-text">About This Giveaway</h2>
+                  <div 
+                    className="text-cream/80 prose prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: giveaway.longDescription }}
+                  />
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card className="bg-[#2D2D2D] border-slate-700">
-              <CardContent className="flex items-center p-6">
-                <Gift className="h-8 w-8 text-green-400 mr-3" />
-                <div>
-                  <p className="text-2xl font-bold text-cream">{gearCount}</p>
-                  <p className="text-sm text-cream/60">Gear Giveaways</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-[#2D2D2D] border-slate-700">
-              <CardContent className="flex items-center p-6">
-                <Calendar className="h-8 w-8 text-blue-400 mr-3" />
-                <div>
-                  <p className="text-2xl font-bold text-cream">{experiencesCount}</p>
-                  <p className="text-sm text-cream/60">Experience Giveaways</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-[#2D2D2D] border-slate-700">
-              <CardContent className="flex items-center p-6">
-                <Trophy className="h-8 w-8 text-yellow-400 mr-3" />
-                <div>
-                  <p className="text-2xl font-bold text-cream">{equipmentCount}</p>
-                  <p className="text-sm text-cream/60">Equipment Giveaways</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+            )}
 
-        {/* Search and Filters */}
-        <Card className="mb-8 bg-[#2D2D2D] border-slate-700">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-cream/40" />
-                  <Input
-                    placeholder="Search giveaways..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-slate-700 border-slate-600 text-cream placeholder:text-cream/40"
-                  />
+            <Card className="bg-[#2D2D2D] border-slate-700">
+              <CardContent className="p-6">
+                <h2 className="text-2xl font-phosphate text-cream mb-4 title-text flex items-center gap-2">
+                  <Gift className="h-6 w-6 text-red-500" />
+                  Prize Details
+                </h2>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-cream/60">Prize Value:</span>
+                    <span className="text-cream font-semibold ml-2">{giveaway.prizeValue}</span>
+                  </div>
+                  {giveaway.prizeItems && giveaway.prizeItems.length > 0 && (
+                    <div>
+                      <span className="text-cream/60">Includes:</span>
+                      <ul className="list-disc list-inside mt-2 text-cream/80">
+                        {giveaway.prizeItems.map((item: string, index: number) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {giveaway.sponsor && (
+                    <div>
+                      <span className="text-cream/60">Sponsored by:</span>
+                      <span className="text-cream font-semibold ml-2">{giveaway.sponsor}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-full md:w-48 bg-slate-700 border-slate-600 text-cream">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  {['all', 'active', 'upcoming', 'ended'].map(status => (
-                    <SelectItem key={status} value={status} className="text-cream focus:bg-slate-600">
-                      {status === 'all' ? 'All Status' : status.charAt(0).toUpperCase() + status.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full md:w-48 bg-slate-700 border-slate-600 text-cream">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category} className="text-cream focus:bg-slate-600">
-                      {category === 'all' ? 'All Categories' : category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        {/* Giveaway Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} className="bg-[#2D2D2D] border-gray-700">
-                <Skeleton className="aspect-video w-full" />
-                <CardHeader>
-                  <Skeleton className="h-6 w-3/4 mb-2" />
-                  <Skeleton className="h-4 w-full" />
-                </CardHeader>
+            {giveaway.rules && giveaway.rules.length > 0 && (
+              <Card className="bg-[#2D2D2D] border-slate-700">
+                <CardContent className="p-6">
+                  <h2 className="text-2xl font-phosphate text-cream mb-4 title-text">Rules & Guidelines</h2>
+                  <ul className="space-y-2 text-cream/80">
+                    {giveaway.rules.map((rule: string, index: number) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-red-500 mt-1">•</span>
+                        <span>{rule}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
               </Card>
-            ))}
-          </div>
-        ) : filteredGiveaways.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredGiveaways.map((giveaway) => (
-              <GiveawayCard key={giveaway.id} giveaway={giveaway} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <Trophy className="h-16 w-16 text-cream/40 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-cream mb-2">
-              No giveaways found
-            </h3>
-            <p className="text-cream/60 mb-6">
-              {searchTerm || selectedStatus !== 'all' || selectedCategory !== 'all'
-                ? "Try adjusting your search terms or filters to find more giveaways."
-                : "Check back soon for exciting giveaways!"}
-            </p>
-            {(searchTerm || selectedStatus !== 'all' || selectedCategory !== 'all') && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedStatus('all');
-                  setSelectedCategory('all');
-                }}
-                className="bg-slate-700 border-slate-600 text-cream hover:bg-slate-600"
-              >
-                Clear Filters
-              </Button>
             )}
           </div>
-        )}
 
-        {/* How It Works Section */}
-        <div className="mt-16">
-          <Card className="bg-[#2D2D2D] border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-2xl text-center text-cream font-phosphate title-text">How Giveaways Work</CardTitle>
-              <CardDescription className="text-center text-cream/80">
-                Simple steps to enter and win amazing prizes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-400">
-                    <span className="text-xl font-bold text-blue-400">1</span>
+          {/* Right Column - Entry Form */}
+          <div className="space-y-6">
+            <Card className="bg-[#2D2D2D] border-slate-700">
+              <CardContent className="p-6">
+                <h2 className="text-2xl font-phosphate text-cream mb-4 title-text flex items-center gap-2">
+                  <Crown className="h-6 w-6 text-red-500" />
+                  Enter Giveaway
+                </h2>
+                
+                {userEntries > 0 && (
+                  <div className="mb-4 p-4 bg-green-600/20 border border-green-500/30 rounded-lg">
+                    <p className="text-green-400 font-semibold">
+                      ✓ You have {userEntries} {userEntries === 1 ? 'entry' : 'entries'} in this giveaway!
+                    </p>
                   </div>
-                  <h3 className="font-semibold mb-2 text-cream">Browse Giveaways</h3>
-                  <p className="text-sm text-cream/60">
-                    Explore our current and upcoming giveaways to find prizes you love.
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-400">
-                    <span className="text-xl font-bold text-green-400">2</span>
-                  </div>
-                  <h3 className="font-semibold mb-2 text-cream">Complete Entry</h3>
-                  <p className="text-sm text-cream/60">
-                    Follow the entry requirements and complete all necessary steps.
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-400">
-                    <span className="text-xl font-bold text-purple-400">3</span>
-                  </div>
-                  <h3 className="font-semibold mb-2 text-cream">Wait for Drawing</h3>
-                  <p className="text-sm text-cream/60">
-                    Winners are selected randomly when the giveaway ends.
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-yellow-600/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-400">
-                    <span className="text-xl font-bold text-yellow-400">4</span>
-                  </div>
-                  <h3 className="font-semibold mb-2 text-cream">Claim Your Prize</h3>
-                  <p className="text-sm text-cream/60">
-                    Winners are notified by email and can claim their prizes.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                )}
 
-        {/* Call to Action */}
-        <div className="mt-16 text-center">
-          <Card className="bg-gradient-to-r from-red-600 to-red-700 text-white border-0">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold mb-4 font-phosphate title-text">
-                Ready to win amazing prizes?
-              </h2>
-              <p className="text-lg mb-6 opacity-90">
-                Join our community and enter giveaways for fishing gear, equipment, and exclusive experiences.
-              </p>
-              <Button 
-                size="lg" 
-                variant="secondary"
-                className="bg-white text-red-600 hover:bg-gray-100 font-phosphate title-text"
-                asChild
-              >
-                <Link href="/register">
-                  Get Started Today
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+                <GiveawayEntryForm 
+                  giveaway={giveaway} 
+                  onSuccess={handleEntrySuccess}
+                />
+
+                {additionalEntryPrice && userEntries > 0 && (
+                  <div className="mt-6 pt-6 border-t border-slate-700">
+                    <h3 className="text-lg font-semibold text-cream mb-3">Buy Additional Entries</h3>
+                    <p className="text-cream/60 mb-4 text-sm">
+                      Increase your chances of winning by purchasing additional entries. Each entry costs ${additionalEntryPrice.toFixed(2)}.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handlePurchaseEntries(1)}
+                        disabled={purchasingEntries}
+                        className="flex-1 bg-slate-700 border-slate-600 text-cream hover:bg-slate-600"
+                      >
+                        {purchasingEntries ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            Buy 1 Entry (${additionalEntryPrice.toFixed(2)})
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handlePurchaseEntries(5)}
+                        disabled={purchasingEntries}
+                        className="flex-1 bg-slate-700 border-slate-600 text-cream hover:bg-slate-600"
+                      >
+                        {purchasingEntries ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            Buy 5 Entries (${(additionalEntryPrice * 5).toFixed(2)})
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 p-4 bg-blue-600/20 border border-blue-500/30 rounded-lg">
+                  <p className="text-sm text-blue-300">
+                    <strong>Membership Required:</strong> You must have an active membership ($9.99/month) to enter giveaways. 
+                    Members automatically get one free entry per giveaway and can purchase additional entries.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
-      
+
       <CTASection />
     </main>
   );

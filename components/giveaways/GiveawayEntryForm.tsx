@@ -37,17 +37,27 @@ export function GiveawayEntryForm({ giveaway, onSuccess, onError }: GiveawayEntr
     setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch(`/api/giveaways/${giveaway.id}/enter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          entryType: 'free'
+        })
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.message || 'Failed to submit entry. Please try again.');
+      }
+
+      const result = await response.json();
       
-      // Mock entry logic
-      const mockSuccess = Math.random() > 0.1; // 90% success rate
-      
-      if (mockSuccess) {
+      if (result.success) {
         setIsSubmitted(true);
         onSuccess?.();
       } else {
-        throw new Error('Failed to submit entry. Please try again.');
+        throw new Error(result.message || 'Failed to submit entry');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
