@@ -11,10 +11,11 @@ const createGiveawaySchema = z.object({
   longDescription: z.string().optional(),
   prizeValue: z.string().min(1, 'Prize value is required').max(100, 'Prize value is too long'),
   maxEntries: z.number().int().positive('Max entries must be positive').optional(),
-  startDate: z.string().datetime('Invalid start date'),
-  endDate: z.string().datetime('Invalid end date'),
-  image: z.string().url('Invalid image URL').optional(),
-  rules: z.array(z.string()).optional(),
+  additionalEntryPrice: z.number().min(0).optional(),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Invalid start date'),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Invalid end date'),
+  image: z.string().optional(),
+  rules: z.union([z.array(z.string()), z.record(z.unknown())]).optional(),
   prizeItems: z.array(z.string()).optional(),
   sponsor: z.string().max(255, 'Sponsor name is too long').optional()
 })
@@ -142,6 +143,7 @@ export async function POST(request: NextRequest) {
     }
 
     const giveawayData = validation.data
+    const { additionalEntryPrice: addEntryPrice, ...rest } = giveawayData
 
     // Additional validation
     const startDate = new Date(giveawayData.startDate)
@@ -181,15 +183,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create giveaway
+    // Create giveaway (additionalEntryPrice is decimal - pass as string or omit)
     const [newGiveaway] = await db
       .insert(giveaways)
       .values({
-        ...giveawayData,
+        ...rest,
         startDate,
         endDate,
         status: initialStatus,
-        createdBy: user.id
+        createdBy: user.id,
+        additionalEntryPrice: addEntryPrice != null ? String(addEntryPrice) : null,
       })
       .returning()
 

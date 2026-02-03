@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Users, Trophy, Calendar, DollarSign } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Users, Trophy, Calendar, DollarSign, ExternalLink } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -285,7 +285,7 @@ export default function AdminContestsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                            <Link href={`/contests/${contest.id}`}>
+                            <Link href={`/admin/contests/${contest.id}`}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </Link>
@@ -306,6 +306,12 @@ export default function AdminContestsPage() {
                             <Link href={`/admin/contests/${contest.id}/collaborative-judging`}>
                               Manage Judging
                             </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <a href={`/contests/${contest.id}`} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Preview on Frontend
+                            </a>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

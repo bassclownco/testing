@@ -49,36 +49,15 @@ const useVideoThumbnail = (videoUrl: string) => {
 
         video.onseeked = () => {
           try {
-            // Calculate scaling to fit video within canvas (contain behavior)
-            const videoAspect = video.videoWidth / video.videoHeight;
-            const canvasAspect = canvas.width / canvas.height;
-            
-            let drawWidth, drawHeight, drawX, drawY;
-            
-            if (videoAspect > canvasAspect) {
-              // Video is wider than canvas
-              drawWidth = canvas.width;
-              drawHeight = canvas.width / videoAspect;
-              drawX = 0;
-              drawY = (canvas.height - drawHeight) / 2;
-            } else {
-              // Video is taller than canvas
-              drawHeight = canvas.height;
-              drawWidth = canvas.height * videoAspect;
-              drawX = (canvas.width - drawWidth) / 2;
-              drawY = 0;
-            }
-            
-            // Fill background with black
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
             // Draw video frame with cover behavior (fill entire canvas, may crop)
-            // Calculate cover dimensions
             const videoAspect = video.videoWidth / video.videoHeight;
             const canvasAspect = canvas.width / canvas.height;
             
             let coverWidth, coverHeight, coverX, coverY;
+            
+            // Fill background with black
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             if (videoAspect > canvasAspect) {
               // Video is wider - fit to height and crop width

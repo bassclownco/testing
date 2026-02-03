@@ -1,21 +1,75 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Trophy, Gift, Building, TrendingUp, AlertCircle, Plus, Eye } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Users, Trophy, Gift, Building, TrendingUp, Eye } from 'lucide-react';
+
+interface AnalyticsData {
+  overview: {
+    users: { total: number; new: number; premium: number; growthRate: string };
+    contests: { total: number; active: number; submissions: { total: number; recent: number } };
+    giveaways: { total: number; active: number; entries: { total: number; recent: number } };
+  };
+  trends: {
+    userSignups: number;
+    contestSubmissions: number;
+    giveawayParticipation: number;
+  };
+  systemHealth: {
+    activeContests: number;
+    activeGiveaways: number;
+  };
+}
 
 export default function AdminDashboard() {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [brandsTotal, setBrandsTotal] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [analyticsRes, brandsRes] = await Promise.all([
+        fetch('/api/admin/analytics?period=30', { credentials: 'include' }),
+        fetch('/api/admin/brands', { credentials: 'include' }),
+      ]);
+      if (analyticsRes.ok) {
+        const analyticsJson = await analyticsRes.json();
+        if (analyticsJson.success && analyticsJson.data) {
+          setData(analyticsJson.data);
+        }
+      }
+      if (brandsRes.ok) {
+        const brandsJson = await brandsRes.json();
+        if (brandsJson.success && brandsJson.data?.total != null) {
+          setBrandsTotal(brandsJson.data.total);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm">
-            <Eye className="h-4 w-4 mr-2" />
-            View Public Site
-          </Button>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Quick Actions
+          <Button variant="outline" size="sm" asChild>
+            <a href="/" target="_blank" rel="noopener noreferrer">
+              <Eye className="h-4 w-4 mr-2" />
+              View Public Site
+            </a>
           </Button>
         </div>
       </div>
@@ -28,10 +82,19 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
-            <p className="text-xs text-muted-foreground">
-              +12% from last month
-            </p>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {data?.overview?.users?.total?.toLocaleString() ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  +{data?.overview?.users?.new ?? 0} this period (
+                  {data?.overview?.users?.growthRate ?? '0'}% growth)
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -41,10 +104,18 @@ export default function AdminDashboard() {
             <Trophy className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">
-              +3 this week
-            </p>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {data?.overview?.contests?.active ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  of {data?.overview?.contests?.total ?? 0} total contests
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -54,10 +125,18 @@ export default function AdminDashboard() {
             <Gift className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">
-              5 ending this week
-            </p>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {data?.overview?.giveaways?.active ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  of {data?.overview?.giveaways?.total ?? 0} total giveaways
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -67,87 +146,14 @@ export default function AdminDashboard() {
             <Building className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">47</div>
-            <p className="text-xs text-muted-foreground">
-              +2 this month
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity & Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest actions across the platform</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New contest submission</p>
-                  <p className="text-xs text-gray-500">Bass Fishing Championship - 2 minutes ago</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">User registration</p>
-                  <p className="text-xs text-gray-500">johnfisher@example.com - 15 minutes ago</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Giveaway winner selected</p>
-                  <p className="text-xs text-gray-500">Premium Rod Giveaway - 1 hour ago</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Contest application</p>
-                  <p className="text-xs text-gray-500">Video Review Contest - 2 hours ago</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>System Alerts</CardTitle>
-            <CardDescription>Important notifications requiring attention</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Contest deadline approaching</p>
-                  <p className="text-xs text-gray-500">Bass Masters Challenge ends in 2 days</p>
-                  <Badge variant="destructive" className="mt-1">Urgent</Badge>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Pending creator applications</p>
-                  <p className="text-xs text-gray-500">5 applications waiting for review</p>
-                  <Badge variant="secondary" className="mt-1">Review Needed</Badge>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New brand partnership inquiry</p>
-                  <p className="text-xs text-gray-500">FishTech Co. interested in collaboration</p>
-                  <Badge variant="outline" className="mt-1">New</Badge>
-                </div>
-              </div>
-            </div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{brandsTotal ?? 0}</div>
+                <p className="text-xs text-muted-foreground">From contests and giveaways</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -160,25 +166,33 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-              <Trophy className="h-6 w-6" />
-              <span className="text-sm">Create Contest</span>
+            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2" asChild>
+              <Link href="/admin/contests/create">
+                <Trophy className="h-6 w-6" />
+                <span className="text-sm">Create Contest</span>
+              </Link>
             </Button>
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-              <Gift className="h-6 w-6" />
-              <span className="text-sm">New Giveaway</span>
+            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2" asChild>
+              <Link href="/admin/giveaways/create">
+                <Gift className="h-6 w-6" />
+                <span className="text-sm">New Giveaway</span>
+              </Link>
             </Button>
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-              <Users className="h-6 w-6" />
-              <span className="text-sm">Manage Users</span>
+            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2" asChild>
+              <Link href="/admin/users">
+                <Users className="h-6 w-6" />
+                <span className="text-sm">Manage Users</span>
+              </Link>
             </Button>
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-              <TrendingUp className="h-6 w-6" />
-              <span className="text-sm">View Analytics</span>
+            <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2" asChild>
+              <Link href="/admin/analytics">
+                <TrendingUp className="h-6 w-6" />
+                <span className="text-sm">View Analytics</span>
+              </Link>
             </Button>
           </div>
         </CardContent>
       </Card>
     </div>
   );
-} 
+}

@@ -7,17 +7,18 @@ import { successResponse, errorResponse, validationErrorResponse, notFoundRespon
 
 const updateGiveawaySchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(255, 'Title is too long').optional(),
-  description: z.string().min(50, 'Description must be at least 50 characters').optional(),
-  prizeDescription: z.string().min(10, 'Prize description must be at least 10 characters').optional(),
-  entryMethod: z.enum(['follow', 'share', 'comment', 'refer', 'points']).optional(),
-  entryCost: z.number().min(0).optional(),
-  maxEntries: z.number().min(1).optional(),
-  maxWinners: z.number().min(1).optional(),
+  description: z.string().min(10, 'Description must be at least 10 characters').optional(),
+  longDescription: z.string().optional(),
+  prizeValue: z.string().max(100, 'Prize value is too long').optional(),
+  maxEntries: z.number().min(1).optional().nullable(),
+  additionalEntryPrice: z.number().min(0).optional().nullable(),
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Invalid start date').optional(),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), 'Invalid end date').optional(),
-  status: z.enum(['draft', 'active', 'closed', 'completed', 'cancelled']).optional(),
-  eligibilityCriteria: z.string().optional(),
-  rules: z.string().optional()
+  status: z.enum(['draft', 'upcoming', 'active', 'ended', 'closed', 'completed', 'cancelled']).optional(),
+  image: z.string().optional().nullable(),
+  rules: z.union([z.array(z.string()), z.record(z.unknown())]).optional(),
+  prizeItems: z.array(z.string()).optional(),
+  sponsor: z.string().max(255, 'Sponsor name is too long').optional().nullable(),
 })
 
 export const dynamic = 'force-dynamic';

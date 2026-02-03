@@ -1,14 +1,120 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Save, Eye } from 'lucide-react';
-import Link from 'next/link';
+import { ArrowLeft, Save, Eye, Loader2 } from 'lucide-react';
+
+const CATEGORIES = [
+  'Video Production',
+  'Photography',
+  'Writing',
+  'Bass Fishing',
+  'Fly Fishing',
+  'Ice Fishing',
+  'Saltwater Fishing',
+  'Gear Review',
+  'Educational',
+];
 
 export default function CreateContestPage() {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    shortDescription: '',
+    image: '',
+    brandLogo: '',
+    brandName: '',
+    prize: '',
+    category: '',
+    startDate: '',
+    endDate: '',
+    applicationDeadline: '',
+    submissionDeadline: '',
+    maxParticipants: '',
+    rules: '',
+    submissionGuidelines: '',
+  });
+
+  const toISO = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toISOString();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!form.title || !form.description || !form.prize || !form.category) {
+      setError('Title, description, prize, and category are required.');
+      return;
+    }
+    const startDate = toISO(form.startDate);
+    const endDate = toISO(form.endDate);
+    const applicationDeadline = toISO(form.applicationDeadline || form.startDate);
+    const submissionDeadline = toISO(form.submissionDeadline || form.endDate);
+    if (!startDate || !endDate || !applicationDeadline || !submissionDeadline) {
+      setError('Start date and end date are required.');
+      return;
+    }
+    if (new Date(startDate) >= new Date(endDate)) {
+      setError('End date must be after start date.');
+      return;
+    }
+    try {
+      setSaving(true);
+      const response = await fetch('/api/contests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          shortDescription: form.shortDescription || undefined,
+          image: form.image || undefined,
+          brandLogo: form.brandLogo || undefined,
+          brandName: form.brandName || undefined,
+          prize: form.prize,
+          category: form.category,
+          startDate,
+          endDate,
+          applicationDeadline,
+          submissionDeadline,
+          maxParticipants: form.maxParticipants ? parseInt(form.maxParticipants, 10) : undefined,
+          rules: form.rules || undefined,
+          submissionGuidelines: form.submissionGuidelines || undefined,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const msg = result?.errors
+          ? Object.entries(result.errors)
+              .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+              .join('; ')
+          : result?.message || 'Failed to create contest';
+        throw new Error(msg);
+      }
+      if (result.success && result.data?.id) {
+        router.push(`/admin/contests/${result.data.id}`);
+      } else {
+        router.push('/admin/contests');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create contest');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -24,258 +130,246 @@ export default function CreateContestPage() {
             <p className="text-gray-600 mt-1">Set up a new contest with all the details</p>
           </div>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline">
+        <Button variant="outline" asChild>
+          <a href="/content-contests" target="_blank" rel="noopener noreferrer">
             <Eye className="h-4 w-4 mr-2" />
-            Preview
-          </Button>
-          <Button>
-            <Save className="h-4 w-4 mr-2" />
-            Create Contest
-          </Button>
-        </div>
+            Preview Frontend
+          </a>
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Contest Details */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Contest Information</CardTitle>
-              <CardDescription>Basic details about the contest</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Contest Title</Label>
-                  <Input id="title" placeholder="Enter contest title" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type">Contest Type</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select contest type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="video">Video Contest</SelectItem>
-                      <SelectItem value="photo">Photo Contest</SelectItem>
-                      <SelectItem value="educational">Educational Contest</SelectItem>
-                      <SelectItem value="review">Product Review</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea 
-                  id="description" 
-                  placeholder="Describe the contest, rules, and requirements"
-                  className="min-h-[100px]"
-                />
-              </div>
+      {error && (
+        <div className="p-4 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>
+      )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="brand">Brand Partner</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select brand partner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bass-masters">Bass Masters</SelectItem>
-                      <SelectItem value="river-pro">River Pro</SelectItem>
-                      <SelectItem value="arctic-gear">Arctic Gear</SelectItem>
-                      <SelectItem value="learn-to-fish">Learn to Fish</SelectItem>
-                    </SelectContent>
-                  </Select>
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Contest Information</CardTitle>
+                <CardDescription>Basic details about the contest</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="title">Contest Title *</Label>
+                  <Input
+                    id="title"
+                    placeholder="Enter contest title"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    required
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bass-fishing">Bass Fishing</SelectItem>
-                      <SelectItem value="fly-fishing">Fly Fishing</SelectItem>
-                      <SelectItem value="ice-fishing">Ice Fishing</SelectItem>
-                      <SelectItem value="saltwater">Saltwater Fishing</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div>
+                  <Label htmlFor="description">Description *</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Describe the contest, rules, and requirements"
+                    className="min-h-[100px]"
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    required
+                  />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <div>
+                  <Label htmlFor="shortDescription">Short Description</Label>
+                  <Input
+                    id="shortDescription"
+                    placeholder="Brief summary (optional)"
+                    value={form.shortDescription}
+                    onChange={(e) => setForm({ ...form, shortDescription: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="brandName">Brand / Sponsor Name</Label>
+                    <Input
+                      id="brandName"
+                      placeholder="Brand name"
+                      value={form.brandName}
+                      onChange={(e) => setForm({ ...form, brandName: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="category">Category *</Label>
+                    <Select
+                      value={form.category}
+                      onValueChange={(v) => setForm({ ...form, category: v })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="image">Contest Image URL</Label>
+                  <Input
+                    id="image"
+                    placeholder="https://..."
+                    value={form.image}
+                    onChange={(e) => setForm({ ...form, image: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="brandLogo">Brand Logo URL</Label>
+                  <Input
+                    id="brandLogo"
+                    placeholder="https://..."
+                    value={form.brandLogo}
+                    onChange={(e) => setForm({ ...form, brandLogo: e.target.value })}
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Contest Timeline</CardTitle>
-              <CardDescription>Set the important dates for your contest</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="start-date">Start Date</Label>
-                  <Input id="start-date" type="date" />
+            <Card>
+              <CardHeader>
+                <CardTitle>Contest Timeline</CardTitle>
+                <CardDescription>Set the important dates for your contest</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start-date">Start Date *</Label>
+                    <Input
+                      id="start-date"
+                      type="datetime-local"
+                      value={form.startDate}
+                      onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end-date">End Date *</Label>
+                    <Input
+                      id="end-date"
+                      type="datetime-local"
+                      value={form.endDate}
+                      onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end-date">End Date</Label>
-                  <Input id="end-date" type="date" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="application-deadline">Application Deadline</Label>
+                    <Input
+                      id="application-deadline"
+                      type="datetime-local"
+                      value={form.applicationDeadline}
+                      onChange={(e) =>
+                        setForm({ ...form, applicationDeadline: e.target.value })
+                      }
+                      placeholder="Defaults to start date"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="submission-deadline">Submission Deadline</Label>
+                    <Input
+                      id="submission-deadline"
+                      type="datetime-local"
+                      value={form.submissionDeadline}
+                      onChange={(e) =>
+                        setForm({ ...form, submissionDeadline: e.target.value })
+                      }
+                      placeholder="Defaults to end date"
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="application-deadline">Application Deadline</Label>
-                  <Input id="application-deadline" type="date" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="judging-deadline">Judging Deadline</Label>
-                  <Input id="judging-deadline" type="date" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Prize Information</CardTitle>
-              <CardDescription>Configure the contest rewards</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="prize-pool">Total Prize Pool ($)</Label>
-                  <Input id="prize-pool" type="number" placeholder="2500" />
+            <Card>
+              <CardHeader>
+                <CardTitle>Prize Information</CardTitle>
+                <CardDescription>Configure the contest rewards</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="prize">Prize Description *</Label>
+                  <Input
+                    id="prize"
+                    placeholder="e.g. $2,500 prize pool, 1st place $1,500"
+                    value={form.prize}
+                    onChange={(e) => setForm({ ...form, prize: e.target.value })}
+                    required
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="winner-count">Number of Winners</Label>
-                  <Input id="winner-count" type="number" placeholder="3" />
+                <div>
+                  <Label htmlFor="rules">Rules</Label>
+                  <Textarea
+                    id="rules"
+                    placeholder="Contest rules and eligibility"
+                    value={form.rules}
+                    onChange={(e) => setForm({ ...form, rules: e.target.value })}
+                    rows={3}
+                  />
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="prize-description">Prize Description</Label>
-                <Textarea 
-                  id="prize-description" 
-                  placeholder="Describe the prizes for 1st, 2nd, 3rd place, etc."
-                />
-              </div>
-            </CardContent>
-          </Card>
+                <div>
+                  <Label htmlFor="submissionGuidelines">Submission Guidelines</Label>
+                  <Textarea
+                    id="submissionGuidelines"
+                    placeholder="How to submit, file formats, etc."
+                    value={form.submissionGuidelines}
+                    onChange={(e) => setForm({ ...form, submissionGuidelines: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Participation Limits</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="max-participants">Max Participants (optional)</Label>
+                  <Input
+                    id="max-participants"
+                    type="number"
+                    placeholder="100"
+                    min={1}
+                    value={form.maxParticipants}
+                    onChange={(e) => setForm({ ...form, maxParticipants: e.target.value })}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button type="submit" className="w-full" disabled={saving}>
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Create Contest
+                </Button>
+                <Button type="button" variant="outline" className="w-full" asChild>
+                  <Link href="/admin/contests">Cancel</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-
-        {/* Settings Sidebar */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Contest Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Public Contest</Label>
-                  <div className="text-sm text-gray-600">
-                    Make this contest visible to all users
-                  </div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Require Application</Label>
-                  <div className="text-sm text-gray-600">
-                    Users must apply before participating
-                  </div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Auto-approve Applications</Label>
-                  <div className="text-sm text-gray-600">
-                    Automatically approve all applications
-                  </div>
-                </div>
-                <Switch />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Email Notifications</Label>
-                  <div className="text-sm text-gray-600">
-                    Send updates to participants
-                  </div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Participation Limits</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="max-participants">Max Participants</Label>
-                <Input id="max-participants" type="number" placeholder="100" />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="min-followers">Minimum Followers</Label>
-                <Input id="min-followers" type="number" placeholder="1000" />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="creator-only">Creator Level</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select requirement" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Users</SelectItem>
-                    <SelectItem value="verified">Verified Users Only</SelectItem>
-                    <SelectItem value="creators">Creators Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Judging Criteria</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="judging-type">Judging Method</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select judging method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="panel">Expert Panel</SelectItem>
-                    <SelectItem value="community">Community Voting</SelectItem>
-                    <SelectItem value="hybrid">Hybrid (Panel + Community)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="criteria">Judging Criteria</Label>
-                <Textarea 
-                  id="criteria" 
-                  placeholder="Describe how submissions will be evaluated"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      </form>
     </div>
   );
-} 
+}

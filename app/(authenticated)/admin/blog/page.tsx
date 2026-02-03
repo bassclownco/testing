@@ -52,6 +52,9 @@ interface BlogPost {
   views: number;
   createdAt: string;
   updatedAt: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  metaKeywords?: string[] | null;
 }
 
 export default function BlogManagementPage() {
@@ -221,9 +224,9 @@ export default function BlogManagementPage() {
       tags: post.tags || [],
       published: post.published,
       featured: post.featured,
-      seoTitle: post.seoTitle || '',
-      seoDescription: post.seoDescription || '',
-      metaKeywords: post.metaKeywords || []
+      seoTitle: post.seoTitle ?? '',
+      seoDescription: post.seoDescription ?? '',
+      metaKeywords: post.metaKeywords ?? []
     });
     setIsDialogOpen(true);
   };
