@@ -217,6 +217,7 @@ export default function AdminContestDetailPage() {
           payload.maxParticipants = n;
         }
       }
+      console.log('Contest PATCH payload:', JSON.stringify(payload, null, 2));
       const response = await fetch(`/api/contests/${contestId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -225,11 +226,12 @@ export default function AdminContestDetailPage() {
       });
       if (!response.ok) {
         const errData = await response.json().catch(() => null);
-        const msg = errData?.message || errData?.errors
-          ? `Validation failed: ${JSON.stringify(errData.errors || errData.message)}`
-          : `Failed to update (${response.status})`;
+        const fieldErrors = errData?.errors ? Object.entries(errData.errors).map(([k, v]) => `${k}: ${v}`).join(', ') : '';
+        const msg = fieldErrors
+          ? `Validation failed - ${fieldErrors}`
+          : errData?.message || `Failed to update (${response.status})`;
         alert(msg);
-        console.error('Contest update error:', errData);
+        console.error('Contest update error:', JSON.stringify(errData, null, 2));
         return;
       }
       setEditOpen(false);
