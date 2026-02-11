@@ -95,7 +95,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json()
 
     // Validate input
-    const validation = updateBlogPostSchema.safeParse(body)
+    const validation = updateBlogPostSchema.strip().safeParse(body)
     if (!validation.success) {
       const errors = validation.error.flatten().fieldErrors
       return validationErrorResponse(errors)

@@ -30,7 +30,9 @@ import {
   Loader2,
   Save,
   X,
-  Upload
+  Upload,
+  Globe,
+  EyeOff
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -292,6 +294,32 @@ export default function BlogManagementPage() {
       metaKeywords: post.metaKeywords ?? []
     });
     setIsDialogOpen(true);
+  };
+
+  const handleTogglePublish = async (post: BlogPost) => {
+    const newPublished = !post.published;
+    try {
+      const response = await fetch(`/api/blog/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          published: newPublished,
+          publishedAt: newPublished ? new Date().toISOString() : null
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        alert(err?.message || 'Failed to update');
+        return;
+      }
+
+      fetchPosts();
+    } catch (error) {
+      console.error('Error toggling publish:', error);
+      alert('Failed to update blog post.');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -784,6 +812,15 @@ export default function BlogManagementPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleTogglePublish(post)}
+                          title={post.published ? 'Unpublish' : 'Publish'}
+                          className={post.published ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'}
+                        >
+                          {post.published ? <EyeOff className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
+                        </Button>
                         {post.published && (
                           <Link href={`/blog/${post.slug}`} target="_blank">
                             <Button variant="ghost" size="sm" title="View on site">
