@@ -223,11 +223,20 @@ export default function AdminContestDetailPage() {
         credentials: 'include',
         body: JSON.stringify(payload),
       });
-      if (!response.ok) throw new Error('Failed to update');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        const msg = errData?.message || errData?.errors
+          ? `Validation failed: ${JSON.stringify(errData.errors || errData.message)}`
+          : `Failed to update (${response.status})`;
+        alert(msg);
+        console.error('Contest update error:', errData);
+        return;
+      }
       setEditOpen(false);
       fetchContest();
     } catch (err) {
       console.error(err);
+      alert('Failed to update contest. Check console for details.');
     } finally {
       setSaving(false);
     }
