@@ -78,17 +78,6 @@ INSERT INTO portfolio_videos (
   published
 ) VALUES
 (
-  'Bajio',
-  'Bass Clown Co. Commercial for Bajio Sunglasses',
-  'https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/bajio-test.mp4',
-  'commercial',
-  'Bajio',
-  false,
-  0,
-  1,
-  true
-),
-(
   'Stealth Batteries',
   'Bass Clown Co. Commercial for Stealth Batteries',
   'https://blo3rw5wwgi5exel.public.blob.vercel-storage.com/videos/bass-clown-hero.mp4',

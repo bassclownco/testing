@@ -5,85 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { Calendar, User, Tag } from "lucide-react";
 import { CTASection } from '@/components/home/CTASection';
-import HookLine from "@/components/HookLine";
 import { Skeleton } from '@/components/ui/skeleton';
-
-// Metadata moved to layout or removed for client component
-
-// TODO: Replace with API call to fetch blog posts
-// const blogPosts: any[] = []; // Empty - ready for blog posts API
-
-/* Sample blog posts data - for future use when blog API is ready
-const blogPosts = [
-  {
-    id: 1,
-    title: "5 Essential Tips for Effective Fishing Product Videos",
-    excerpt: "Learn how to showcase your fishing products in the most compelling way with these expert video production tips.",
-    date: "May 5, 2025",
-    author: "Alex Rivers",
-    category: "Video Production",
-    image: "/images/assets/bass-clown-co-fish-chase.png"
-  },
-  {
-    id: 2,
-    title: "Behind the Scenes: Our Recent Lure Launch Campaign",
-    excerpt: "Take a look at how we created an engaging video series for a major fishing lure manufacturer's new product line.",
-    date: "April 28, 2025",
-    author: "Morgan Lakes",
-    category: "Case Studies",
-    image: "/images/assets/bass-taking-picture.svg"
-  },
-  {
-    id: 3,
-    title: "How Video Content Is Transforming the Fishing Industry",
-    excerpt: "Explore the growing impact of video marketing on fishing brands and consumer behavior in the digital age.",
-    date: "April 15, 2025",
-    author: "Jordan Streams",
-    category: "Industry Insights",
-    image: "/images/assets/video-reel-1.svg"
-  },
-  {
-    id: 4,
-    title: "Creating Authentic Fishing Stories That Resonate",
-    excerpt: "Discover the art of storytelling in fishing videos and how it can strengthen your brand's connection with anglers.",
-    date: "April 3, 2025",
-    author: "Taylor Brooks",
-    category: "Content Strategy",
-    image: "/images/assets/bubbles.svg"
-  },
-  {
-    id: 5,
-    title: "Video Review Ethics: Our Approach to Honest Product Coverage",
-    excerpt: "Learn about our philosophy and practices for creating fishing product review videos with integrity.",
-    date: "March 22, 2025",
-    author: "Alex Rivers",
-    category: "Reviews",
-    image: "/images/assets/bass-clown-co-fish-chase.png"
-  },
-  {
-    id: 6,
-    title: "The Technical Side: Equipment We Use for Water-Based Filming",
-    excerpt: "A detailed look at our specialized video gear for capturing stunning footage on and around water.",
-    date: "March 10, 2025",
-    author: "Morgan Lakes",
-    category: "Equipment",
-    image: "/images/assets/bass-taking-picture.svg"
-  },
-];
-*/
-
-const categories = [
-  "Video Production",
-  "Case Studies",
-  "Industry Insights",
-  "Content Strategy",
-  "Reviews",
-  "Equipment"
-];
 
 export default function Blog() {
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -112,6 +39,15 @@ export default function Blog() {
     }
   };
 
+  // Derive categories dynamically from actual posts
+  const categories = Array.from(
+    new Set(blogPosts.map(p => p.category).filter(Boolean))
+  ) as string[];
+
+  const filteredPosts = selectedCategory
+    ? blogPosts.filter(p => p.category === selectedCategory)
+    : blogPosts;
+
   return (
     <main className="flex flex-col min-h-screen bg-[#1A1A1A] text-cream relative">
       {/* Hero Section */}
@@ -120,11 +56,6 @@ export default function Blog() {
         className="relative min-h-[50vh] md:min-h-[40vh] flex flex-col items-center justify-center overflow-hidden py-16 md:py-20 px-4"
         style={{ backgroundColor: '#2C3E50' }}
       >
-        <HookLine
-          size={80}
-          color="#ECE9D9"
-          className="absolute top-0 left-1/2 -translate-x-1/2 z-[1]"
-        />
         <div className="absolute inset-0 bg-black/30 z-[1]"></div>
         <div className="container mx-auto px-4 relative z-10 flex flex-col items-center justify-center text-center">
           <h1 className="font-phosphate text-5xl md:text-7xl tracking-wider text-cream uppercase mb-4 text-shadow-lg title-text">
@@ -160,7 +91,7 @@ export default function Blog() {
           <div className="text-center py-16">
             <h2 className="text-3xl font-phosphate text-cream mb-4 title-text">Blog Coming Soon!</h2>
             <p className="text-cream/80 text-lg mb-8 max-w-2xl mx-auto">
-              We're working on exciting content to share with you. Check back soon for expert tips, 
+              We&apos;re working on exciting content to share with you. Check back soon for expert tips, 
               industry insights, and behind-the-scenes stories from the Bass Clown Co team.
             </p>
           </div>
@@ -170,7 +101,7 @@ export default function Blog() {
               {/* Blog Posts Column */}
               <div className="md:col-span-2">
                 <div className="grid grid-cols-1 gap-12">
-                  {blogPosts.map((post) => (
+                  {filteredPosts.map((post) => (
                     <div key={post.id} className="bg-[#2D2D2D] rounded-lg overflow-hidden shadow-xl">
                       {post.featuredImage && (
                         <div className="relative h-60">
@@ -223,23 +154,60 @@ export default function Blog() {
               
               {/* Sidebar Column */}
               <aside className="md:col-span-1 space-y-8">
-                {/* Categories */}
-                <div className="bg-[#2D2D2D] p-6 rounded-lg shadow-xl">
-                  <h3 className="text-xl md:text-2xl font-phosphate text-cream mb-4 title-text">Categories</h3>
-                  <ul className="space-y-2">
-                    {categories.map((category, index) => (
-                      <li key={index}>
-                        <a 
-                          href="#" 
-                          className="text-cream/80 hover:text-red-500 transition-colors flex items-center group"
+                {/* Categories - derived from actual posts */}
+                {categories.length > 0 && (
+                  <div className="bg-[#2D2D2D] p-6 rounded-lg shadow-xl">
+                    <h3 className="text-xl md:text-2xl font-phosphate text-cream mb-4 title-text">Categories</h3>
+                    <ul className="space-y-2">
+                      <li>
+                        <button
+                          onClick={() => setSelectedCategory(null)}
+                          className={`w-full text-left transition-colors flex items-center group ${
+                            !selectedCategory ? 'text-red-500 font-semibold' : 'text-cream/80 hover:text-red-500'
+                          }`}
                         >
                           <Tag className="h-4 w-4 mr-2 text-red-500 group-hover:text-red-400 transition-colors" />
-                          {category}
-                        </a>
+                          All Posts ({blogPosts.length})
+                        </button>
                       </li>
-                    ))}
-                  </ul>
-                </div>
+                      {categories.map((category) => {
+                        const count = blogPosts.filter(p => p.category === category).length;
+                        return (
+                          <li key={category}>
+                            <button
+                              onClick={() => setSelectedCategory(category)}
+                              className={`w-full text-left transition-colors flex items-center group ${
+                                selectedCategory === category ? 'text-red-500 font-semibold' : 'text-cream/80 hover:text-red-500'
+                              }`}
+                            >
+                              <Tag className="h-4 w-4 mr-2 text-red-500 group-hover:text-red-400 transition-colors" />
+                              {category} ({count})
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Featured Posts */}
+                {blogPosts.filter(p => p.featured).length > 0 && (
+                  <div className="bg-[#2D2D2D] p-6 rounded-lg shadow-xl">
+                    <h3 className="text-xl md:text-2xl font-phosphate text-cream mb-4 title-text">Featured</h3>
+                    <ul className="space-y-3">
+                      {blogPosts.filter(p => p.featured).slice(0, 5).map((post) => (
+                        <li key={post.id}>
+                          <Link 
+                            href={`/blog/${post.slug}`}
+                            className="text-cream/80 hover:text-red-500 transition-colors text-sm block"
+                          >
+                            {post.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </aside>
             </div>
           </>

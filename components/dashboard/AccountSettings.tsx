@@ -1,26 +1,79 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth-context';
-import { Save, Edit } from 'lucide-react';
+import { Save, Edit, Loader2, Check } from 'lucide-react';
 
 export const AccountSettings: React.FC = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [formData, setFormData] = useState({
-    email: user?.email || '',
-    name: user?.name || '',
+    email: '',
+    name: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Load current user data
+    if (user) {
+      setFormData({
+        email: user.email || '',
+        name: user.name || '',
+      });
+    }
+    // Also fetch from API for most up-to-date data
+    fetchProfile();
+  }, [user]);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch('/api/users/profile', { credentials: 'include' });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setFormData({
+            email: result.data.email || '',
+            name: result.data.name || '',
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Account settings updated:', formData);
-    setIsEditing(false);
+    try {
+      setSaving(true);
+      const response = await fetch('/api/users/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: formData.name,
+        })
+      });
+
+      if (response.ok) {
+        setSaved(true);
+        setIsEditing(false);
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        const result = await response.json();
+        alert(result.message || 'Failed to update profile');
+      }
+    } catch (err) {
+      console.error('Failed to save account settings:', err);
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -34,11 +87,25 @@ export const AccountSettings: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setIsEditing(!isEditing)}
+          onClick={() => {
+            if (isEditing) {
+              handleSubmit(new Event('submit') as any);
+            } else {
+              setIsEditing(true);
+            }
+          }}
+          disabled={saving}
           className="border-gray-600 text-gray-300 hover:bg-gray-700"
         >
-          {isEditing ? <Save className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
-          {isEditing ? 'Save' : 'Edit'}
+          {saving ? (
+            <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Saving</>
+          ) : saved ? (
+            <><Check className="w-4 h-4 mr-1 text-green-400" />Saved</>
+          ) : isEditing ? (
+            <><Save className="w-4 h-4 mr-1" />Save</>
+          ) : (
+            <><Edit className="w-4 h-4 mr-1" />Edit</>
+          )}
         </Button>
       </CardHeader>
       <CardContent>
@@ -60,13 +127,13 @@ export const AccountSettings: React.FC = () => {
               id="email"
               type="email"
               value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              disabled={!isEditing}
+              disabled
               className="bg-[#1A1A1A] border-gray-600 text-white disabled:opacity-50"
             />
+            <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
           </div>
         </form>
       </CardContent>
     </Card>
   );
-}; 
+};

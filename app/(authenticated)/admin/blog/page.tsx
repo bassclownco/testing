@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,8 @@ import {
   FileText,
   Loader2,
   Save,
-  X
+  X,
+  Upload
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -80,6 +81,13 @@ export default function BlogManagementPage() {
     metaKeywords: [] as string[]
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingFeatured, setUploadingFeatured] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const featuredImageRef = useRef<HTMLInputElement>(null);
+  const additionalImageRef = useRef<HTMLInputElement>(null);
+  const videoUrlRef = useRef<HTMLInputElement>(null);
+  const videoTitleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -123,24 +131,74 @@ export default function BlogManagementPage() {
     }));
   };
 
-  const handleAddImage = () => {
-    const url = prompt('Enter image URL:');
+  const uploadFile = async (file: File): Promise<string | null> => {
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        credentials: 'include',
+        body: formDataUpload
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        alert(err.message || 'Upload failed');
+        return null;
+      }
+
+      const result = await response.json();
+      if (result.success && result.data?.url) {
+        return result.data.url;
+      }
+      return null;
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload file. Please try again.');
+      return null;
+    }
+  };
+
+  const handleFeaturedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFeatured(true);
+    const url = await uploadFile(file);
+    if (url) {
+      setFormData(prev => ({ ...prev, featuredImage: url }));
+    }
+    setUploadingFeatured(false);
+    if (featuredImageRef.current) featuredImageRef.current.value = '';
+  };
+
+  const handleAdditionalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const url = await uploadFile(file);
     if (url) {
       setFormData(prev => ({
         ...prev,
         images: [...(prev.images || []), url]
       }));
     }
+    setUploadingImage(false);
+    if (additionalImageRef.current) additionalImageRef.current.value = '';
   };
 
   const handleAddVideo = () => {
-    const url = prompt('Enter video URL:');
-    const title = prompt('Enter video title (optional):') || '';
+    const url = videoUrlRef.current?.value?.trim();
+    const title = videoTitleRef.current?.value?.trim() || '';
     if (url) {
       setFormData(prev => ({
         ...prev,
         videos: [...(prev.videos || []), { url, title, thumbnail: '' }]
       }));
+      if (videoUrlRef.current) videoUrlRef.current.value = '';
+      if (videoTitleRef.current) videoTitleRef.current.value = '';
     }
   };
 
@@ -180,34 +238,39 @@ export default function BlogManagementPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save blog post');
+        const err = await response.json();
+        throw new Error(err.message || 'Failed to save blog post');
       }
 
       setIsDialogOpen(false);
       setEditingPost(null);
-      setFormData({
-        title: '',
-        slug: '',
-        excerpt: '',
-        content: '',
-        featuredImage: '',
-        images: [],
-        videos: [],
-        category: '',
-        tags: [],
-        published: false,
-        featured: false,
-        seoTitle: '',
-        seoDescription: '',
-        metaKeywords: []
-      });
+      resetForm();
       fetchPosts();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving blog post:', error);
-      alert('Failed to save blog post. Please try again.');
+      alert(error.message || 'Failed to save blog post. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      slug: '',
+      excerpt: '',
+      content: '',
+      featuredImage: '',
+      images: [],
+      videos: [],
+      category: '',
+      tags: [],
+      published: false,
+      featured: false,
+      seoTitle: '',
+      seoDescription: '',
+      metaKeywords: []
+    });
   };
 
   const handleEdit = (post: BlogPost) => {
@@ -269,31 +332,16 @@ export default function BlogManagementPage() {
           <DialogTrigger asChild>
             <Button onClick={() => {
               setEditingPost(null);
-              setFormData({
-                title: '',
-                slug: '',
-                excerpt: '',
-                content: '',
-                featuredImage: '',
-                images: [],
-                videos: [],
-                category: '',
-                tags: [],
-                published: false,
-                featured: false,
-                seoTitle: '',
-                seoDescription: '',
-                metaKeywords: []
-              });
+              resetForm();
             }}>
               <Plus className="h-4 w-4 mr-2" />
               Create Blog Post
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="blog-dialog-desc">
             <DialogHeader>
               <DialogTitle>{editingPost ? 'Edit Blog Post' : 'Create Blog Post'}</DialogTitle>
-              <DialogDescription>
+              <DialogDescription id="blog-dialog-desc">
                 Create a fully featured blog post with images, videos, and rich text content
               </DialogDescription>
             </DialogHeader>
@@ -342,20 +390,43 @@ export default function BlogManagementPage() {
                   placeholder="Full blog post content (HTML supported)..."
                   className="font-mono text-sm"
                 />
-                <p className="text-xs text-gray-500">You can use HTML tags for formatting</p>
+                <p className="text-xs text-gray-500">You can use HTML tags for formatting: &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, &lt;blockquote&gt;, &lt;a href=&quot;...&quot;&gt;</p>
               </div>
 
+              {/* Featured Image - File Upload */}
               <div className="space-y-2">
-                <Label htmlFor="featuredImage">Featured Image URL</Label>
-                <Input
-                  id="featuredImage"
-                  type="url"
-                  value={formData.featuredImage}
-                  onChange={(e) => setFormData(prev => ({ ...prev, featuredImage: e.target.value }))}
-                  placeholder="https://..."
-                />
+                <Label>Featured Image</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={featuredImageRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleFeaturedImageUpload}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => featuredImageRef.current?.click()}
+                    disabled={uploadingFeatured}
+                  >
+                    {uploadingFeatured ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading...</>
+                    ) : (
+                      <><Upload className="h-4 w-4 mr-2" />Upload Image</>
+                    )}
+                  </Button>
+                  <span className="text-sm text-gray-500">or enter URL:</span>
+                  <Input
+                    type="url"
+                    value={formData.featuredImage}
+                    onChange={(e) => setFormData(prev => ({ ...prev, featuredImage: e.target.value }))}
+                    placeholder="https://..."
+                    className="flex-1"
+                  />
+                </div>
                 {formData.featuredImage && (
-                  <div className="relative w-full h-48 mt-2 border rounded">
+                  <div className="relative w-full h-48 mt-2 border rounded overflow-hidden group">
                     <Image
                       src={formData.featuredImage}
                       alt="Featured"
@@ -363,77 +434,110 @@ export default function BlogManagementPage() {
                       className="object-contain"
                       unoptimized
                     />
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, featuredImage: '' }))}
+                      className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                 )}
               </div>
 
+              {/* Additional Images - File Upload */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Additional Images</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddImage}>
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                    Add Image
-                  </Button>
+                  <div className="flex gap-2">
+                    <input
+                      ref={additionalImageRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={handleAdditionalImageUpload}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => additionalImageRef.current?.click()}
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading...</>
+                      ) : (
+                        <><ImageIcon className="h-4 w-4 mr-2" />Upload Image</>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {formData.images?.map((img, index) => (
-                    <div key={index} className="relative h-24 border rounded group">
-                      <Image
-                        src={img}
-                        alt={`Image ${index + 1}`}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                {formData.images && formData.images.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {formData.images.map((img, index) => (
+                      <div key={index} className="relative h-24 border rounded group overflow-hidden">
+                        <Image
+                          src={img}
+                          alt={`Image ${index + 1}`}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
+              {/* Videos - URL Input */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Videos</Label>
+                <Label>Videos</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    ref={videoUrlRef}
+                    type="url"
+                    placeholder="Video URL (YouTube, Vimeo, or direct)"
+                    className="flex-1"
+                  />
+                  <Input
+                    ref={videoTitleRef}
+                    type="text"
+                    placeholder="Title (optional)"
+                    className="w-48"
+                  />
                   <Button type="button" variant="outline" size="sm" onClick={handleAddVideo}>
-                    <Video className="h-4 w-4 mr-2" />
-                    Add Video
+                    <Video className="h-4 w-4 mr-1" />
+                    Add
                   </Button>
                 </div>
-                <div className="space-y-2">
-                  {formData.videos?.map((video, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                      <Video className="h-4 w-4 text-gray-400" />
-                      <div className="flex-1">
-                        <Input
-                          value={video.url}
-                          onChange={(e) => {
-                            const newVideos = [...(formData.videos || [])];
-                            newVideos[index].url = e.target.value;
-                            setFormData(prev => ({ ...prev, videos: newVideos }));
-                          }}
-                          placeholder="Video URL"
-                        />
-                        {video.title && (
-                          <p className="text-xs text-gray-500 mt-1">{video.title}</p>
-                        )}
+                {formData.videos && formData.videos.length > 0 && (
+                  <div className="space-y-2">
+                    {formData.videos.map((video, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 border rounded bg-gray-50">
+                        <Video className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{video.title || 'Untitled Video'}</p>
+                          <p className="text-xs text-gray-500 truncate">{video.url}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveVideo(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveVideo(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -443,7 +547,7 @@ export default function BlogManagementPage() {
                     id="category"
                     value={formData.category}
                     onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="e.g., Video Production"
+                    placeholder="e.g., Video Production, Industry Insights"
                   />
                 </div>
                 <div className="space-y-2">
@@ -457,6 +561,20 @@ export default function BlogManagementPage() {
                     }))}
                     placeholder="tag1, tag2, tag3"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="authorName">Author Name</Label>
+                  <Input
+                    id="authorName"
+                    value={formData.excerpt ? undefined : undefined}
+                    disabled
+                    placeholder="Auto-filled from your account"
+                    className="text-gray-500"
+                  />
+                  <p className="text-xs text-gray-500">Author is set automatically from your account</p>
                 </div>
               </div>
 
@@ -479,22 +597,40 @@ export default function BlogManagementPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="seoTitle">SEO Title</Label>
-                  <Input
-                    id="seoTitle"
-                    value={formData.seoTitle}
-                    onChange={(e) => setFormData(prev => ({ ...prev, seoTitle: e.target.value }))}
-                  />
+              {/* SEO Section */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">SEO Settings</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="seoTitle">SEO Title</Label>
+                    <Input
+                      id="seoTitle"
+                      value={formData.seoTitle}
+                      onChange={(e) => setFormData(prev => ({ ...prev, seoTitle: e.target.value }))}
+                      placeholder="Custom title for search engines"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="seoDescription">SEO Description</Label>
+                    <Textarea
+                      id="seoDescription"
+                      value={formData.seoDescription}
+                      onChange={(e) => setFormData(prev => ({ ...prev, seoDescription: e.target.value }))}
+                      rows={2}
+                      placeholder="Meta description for search engines"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="seoDescription">SEO Description</Label>
-                  <Textarea
-                    id="seoDescription"
-                    value={formData.seoDescription}
-                    onChange={(e) => setFormData(prev => ({ ...prev, seoDescription: e.target.value }))}
-                    rows={2}
+                <div className="space-y-2 mt-4">
+                  <Label htmlFor="metaKeywords">Meta Keywords (comma-separated)</Label>
+                  <Input
+                    id="metaKeywords"
+                    value={formData.metaKeywords?.join(', ') || ''}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      metaKeywords: e.target.value.split(',').map(t => t.trim()).filter(t => t) 
+                    }))}
+                    placeholder="keyword1, keyword2, keyword3"
                   />
                 </div>
               </div>
@@ -526,10 +662,46 @@ export default function BlogManagementPage() {
         </Dialog>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold">{posts.length}</p>
+              <p className="text-sm text-gray-500">Total Posts</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{posts.filter(p => p.published).length}</p>
+              <p className="text-sm text-gray-500">Published</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-600">{posts.filter(p => !p.published).length}</p>
+              <p className="text-sm text-gray-500">Drafts</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">{posts.reduce((sum, p) => sum + (p.views || 0), 0)}</p>
+              <p className="text-sm text-gray-500">Total Views</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>All Blog Posts</CardTitle>
-          <CardDescription>Manage your blog content</CardDescription>
+          <CardDescription>Manage your blog content - create, edit, publish, and delete posts</CardDescription>
           <div className="flex items-center space-x-2 mt-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -556,6 +728,7 @@ export default function BlogManagementPage() {
                   <TableHead>Title</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Media</TableHead>
                   <TableHead>Views</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -565,21 +738,48 @@ export default function BlogManagementPage() {
                 {filteredPosts.map((post) => (
                   <TableRow key={post.id}>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{post.title}</div>
-                        <div className="text-sm text-gray-500">{post.slug}</div>
+                      <div className="flex items-center gap-3">
+                        {post.featuredImage && (
+                          <div className="relative w-12 h-8 rounded overflow-hidden flex-shrink-0">
+                            <Image
+                              src={post.featuredImage}
+                              alt=""
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-medium">{post.title}</div>
+                          <div className="text-sm text-gray-500">/{post.slug}</div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>{post.category || '-'}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         {post.published ? (
-                          <Badge variant="default">Published</Badge>
+                          <Badge variant="default" className="bg-green-600">Published</Badge>
                         ) : (
                           <Badge variant="secondary">Draft</Badge>
                         )}
                         {post.featured && (
                           <Badge variant="outline">Featured</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {post.images && post.images.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <ImageIcon className="h-3 w-3 mr-1" />{post.images.length}
+                          </Badge>
+                        )}
+                        {post.videos && post.videos.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <Video className="h-3 w-3 mr-1" />{post.videos.length}
+                          </Badge>
                         )}
                       </div>
                     </TableCell>
@@ -591,7 +791,7 @@ export default function BlogManagementPage() {
                       <div className="flex justify-end gap-2">
                         {post.published && (
                           <Link href={`/blog/${post.slug}`} target="_blank">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" title="View on site">
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
@@ -600,6 +800,7 @@ export default function BlogManagementPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(post)}
+                          title="Edit post"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -607,6 +808,7 @@ export default function BlogManagementPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(post.id)}
+                          title="Delete post"
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
@@ -619,8 +821,9 @@ export default function BlogManagementPage() {
           ) : (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No blog posts found</p>
-              <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
+              <p className="text-gray-600 mb-2">No blog posts found</p>
+              <p className="text-sm text-gray-500 mb-4">Create your first blog post to get started</p>
+              <Button onClick={() => { setEditingPost(null); resetForm(); setIsDialogOpen(true); }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create First Post
               </Button>

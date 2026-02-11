@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Save, Trash2 } from 'lucide-react';
+import { Save, Trash2, Loader2, Check } from 'lucide-react';
 
 export const PrivacySettings: React.FC = () => {
   const [settings, setSettings] = useState({
@@ -16,22 +16,87 @@ export const PrivacySettings: React.FC = () => {
     allowDataCollection: false,
     showOnlineStatus: true,
   });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/users/settings', { credentials: 'include' });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data?.privacy) {
+          setSettings(prev => ({
+            ...prev,
+            ...result.data.privacy
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch privacy settings:', err);
+    }
+  };
 
   const handleToggle = (key: string) => {
     setSettings(prev => ({
       ...prev,
       [key]: !prev[key as keyof typeof prev]
     }));
+    setSaved(false);
   };
 
-  const handleSave = () => {
-    // Handle save
-    console.log('Privacy settings saved:', settings);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const response = await fetch('/api/users/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          privacy: settings
+        })
+      });
+
+      if (response.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        const result = await response.json();
+        alert(result.message || 'Failed to save privacy settings');
+      }
+    } catch (err) {
+      console.error('Failed to save privacy settings:', err);
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    // Handle account deletion
-    console.log('Account deletion requested');
+  const handleDeleteAccount = async () => {
+    try {
+      setDeleting(true);
+      const response = await fetch('/api/users/settings', {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        alert('Account deletion request submitted. You will be logged out.');
+        window.location.href = '/login';
+      } else {
+        const result = await response.json();
+        alert(result.message || 'Failed to delete account. Please contact support.');
+      }
+    } catch (err) {
+      console.error('Failed to delete account:', err);
+      alert('Failed to delete account. Please contact support.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -100,10 +165,16 @@ export const PrivacySettings: React.FC = () => {
         <div className="flex flex-col gap-2">
           <Button 
             onClick={handleSave}
+            disabled={saving}
             className="w-full bg-[#8B4513] hover:bg-[#A0522D] text-white"
           >
-            <Save className="w-4 h-4 mr-2" />
-            Save Privacy Settings
+            {saving ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+            ) : saved ? (
+              <><Check className="w-4 h-4 mr-2" />Saved!</>
+            ) : (
+              <><Save className="w-4 h-4 mr-2" />Save Privacy Settings</>
+            )}
           </Button>
           
           <AlertDialog>
@@ -126,9 +197,14 @@ export const PrivacySettings: React.FC = () => {
                 </AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleDeleteAccount}
+                  disabled={deleting}
                   className="bg-red-600 hover:bg-red-700"
                 >
-                  Delete Account
+                  {deleting ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting...</>
+                  ) : (
+                    'Delete Account'
+                  )}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -137,4 +213,4 @@ export const PrivacySettings: React.FC = () => {
       </CardContent>
     </Card>
   );
-}; 
+};
