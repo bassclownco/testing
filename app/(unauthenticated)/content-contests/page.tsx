@@ -277,7 +277,12 @@ export default function ContentContestsPage() {
                             <Badge className="bg-red-600/20 text-red-400 border border-red-600/30 hover:bg-red-600/30">
                               {contest.category}
                             </Badge>
-                            {contest.requirements?.slice(0, 3).map((req: string, i: number) => (
+                            {(Array.isArray(contest.requirements)
+                              ? contest.requirements
+                              : typeof contest.requirements === 'string'
+                                ? (() => { try { return JSON.parse(contest.requirements); } catch { return []; } })()
+                                : []
+                            ).slice(0, 3).map((req: string, i: number) => (
                               <Badge key={i} variant="outline" className="text-cream/60 border-white/10">
                                 {req}
                               </Badge>

@@ -5,25 +5,29 @@ import { eq, count, and } from 'drizzle-orm'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { successResponse, errorResponse, validationErrorResponse, notFoundResponse, handleApiError } from '@/lib/api-response'
 
+// Helper: treat empty strings as undefined so optional URL fields don't fail
+const emptyToUndefined = z.literal('').transform(() => undefined);
+const optionalUrl = z.union([emptyToUndefined, z.string().url()]).optional();
+
 const updateContestSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(255, 'Title is too long').optional(),
-  description: z.string().min(10, 'Description must be at least 10 characters').optional(),
-  shortDescription: z.string().max(500, 'Short description is too long').optional(),
-  image: z.string().url('Invalid image URL').optional(),
-  brandLogo: z.string().optional(),
-  brandName: z.string().max(255, 'Brand name is too long').optional(),
-  prize: z.string().min(1, 'Prize is required').max(255, 'Prize description is too long').optional(),
-  startDate: z.string().datetime('Invalid start date').optional(),
-  endDate: z.string().datetime('Invalid end date').optional(),
-  applicationDeadline: z.string().datetime('Invalid application deadline').optional(),
-  submissionDeadline: z.string().datetime('Invalid submission deadline').optional(),
+  description: z.union([emptyToUndefined, z.string().min(10, 'Description must be at least 10 characters')]).optional(),
+  shortDescription: z.union([emptyToUndefined, z.string().max(500)]).optional(),
+  image: optionalUrl,
+  brandLogo: z.union([emptyToUndefined, z.string()]).optional(),
+  brandName: z.union([emptyToUndefined, z.string().max(255)]).optional(),
+  prize: z.union([emptyToUndefined, z.string().max(255)]).optional(),
+  startDate: z.union([emptyToUndefined, z.string().datetime()]).optional(),
+  endDate: z.union([emptyToUndefined, z.string().datetime()]).optional(),
+  applicationDeadline: z.union([emptyToUndefined, z.string().datetime()]).optional().nullable(),
+  submissionDeadline: z.union([emptyToUndefined, z.string().datetime()]).optional().nullable(),
   status: z.enum(['draft', 'open', 'closed', 'judging', 'completed']).optional(),
-  category: z.string().min(1, 'Category is required').max(100, 'Category is too long').optional(),
-  requirements: z.array(z.string()).optional(),
-  judges: z.array(z.string()).optional(),
-  maxParticipants: z.number().int().positive('Max participants must be positive').optional(),
-  rules: z.string().optional(),
-  submissionGuidelines: z.string().optional()
+  category: z.union([emptyToUndefined, z.string().max(100)]).optional(),
+  requirements: z.union([z.array(z.string()), z.string()]).optional(),
+  judges: z.union([z.array(z.string()), z.string()]).optional(),
+  maxParticipants: z.union([z.number().int().positive(), z.string(), z.null()]).optional(),
+  rules: z.union([emptyToUndefined, z.string()]).optional(),
+  submissionGuidelines: z.union([emptyToUndefined, z.string()]).optional()
 })
 
 export const dynamic = 'force-dynamic';
@@ -137,36 +141,35 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return notFoundResponse('Contest not found')
     }
 
-    // Additional validation for date fields
+    // Normalize types: requirements/judges may arrive as JSON strings
     let processedUpdateData: any = { ...updateData }
     
-    if (updateData.startDate || updateData.endDate || updateData.applicationDeadline || updateData.submissionDeadline) {
-      const startDate = updateData.startDate ? new Date(updateData.startDate) : existingContest.startDate
-      const endDate = updateData.endDate ? new Date(updateData.endDate) : existingContest.endDate
-      const applicationDeadline = updateData.applicationDeadline ? new Date(updateData.applicationDeadline) : existingContest.applicationDeadline
-      const submissionDeadline = updateData.submissionDeadline ? new Date(updateData.submissionDeadline) : existingContest.submissionDeadline
+    if (typeof processedUpdateData.requirements === 'string') {
+      try { processedUpdateData.requirements = JSON.parse(processedUpdateData.requirements); } catch { delete processedUpdateData.requirements; }
+    }
+    if (typeof processedUpdateData.judges === 'string') {
+      try { processedUpdateData.judges = JSON.parse(processedUpdateData.judges); } catch { delete processedUpdateData.judges; }
+    }
+    if (processedUpdateData.maxParticipants !== undefined) {
+      const n = Number(processedUpdateData.maxParticipants);
+      if (isNaN(n) || n <= 0) { delete processedUpdateData.maxParticipants; }
+      else { processedUpdateData.maxParticipants = n; }
+    }
+    
+    // Convert date strings to Date objects when provided
+    if (processedUpdateData.startDate) processedUpdateData.startDate = new Date(processedUpdateData.startDate)
+    if (processedUpdateData.endDate) processedUpdateData.endDate = new Date(processedUpdateData.endDate)
+    if (processedUpdateData.applicationDeadline) processedUpdateData.applicationDeadline = new Date(processedUpdateData.applicationDeadline)
+    if (processedUpdateData.submissionDeadline) processedUpdateData.submissionDeadline = new Date(processedUpdateData.submissionDeadline)
 
-      if (startDate >= endDate) {
+    // Only validate date ordering when date fields are actually being changed
+    const hasDateChanges = updateData.startDate || updateData.endDate || updateData.applicationDeadline || updateData.submissionDeadline
+    if (hasDateChanges) {
+      const startDate = processedUpdateData.startDate || existingContest.startDate
+      const endDate = processedUpdateData.endDate || existingContest.endDate
+      if (startDate && endDate && startDate >= endDate) {
         return validationErrorResponse({ endDate: ['End date must be after start date'] })
       }
-
-      if (applicationDeadline >= submissionDeadline) {
-        return validationErrorResponse({ 
-          submissionDeadline: ['Submission deadline must be after application deadline'] 
-        })
-      }
-
-      if (submissionDeadline >= endDate) {
-        return validationErrorResponse({ 
-          submissionDeadline: ['Submission deadline must be before end date'] 
-        })
-      }
-
-      // Convert dates to proper Date objects
-      if (updateData.startDate) processedUpdateData.startDate = startDate
-      if (updateData.endDate) processedUpdateData.endDate = endDate
-      if (updateData.applicationDeadline) processedUpdateData.applicationDeadline = applicationDeadline
-      if (updateData.submissionDeadline) processedUpdateData.submissionDeadline = submissionDeadline
     }
 
     // Update contest
