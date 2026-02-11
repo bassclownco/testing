@@ -28,6 +28,14 @@ export async function GET(request: NextRequest) {
     const chargeId = searchParams.get('chargeId')
     const limit = parseInt(searchParams.get('limit') || '50')
 
+    // Gracefully handle missing/invalid Stripe key
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('...')) {
+      return successResponse({
+        refunds: [],
+        warning: 'Stripe is not configured. Add a valid STRIPE_SECRET_KEY to enable refund management.'
+      }, 'Refunds retrieved successfully')
+    }
+
     const refunds = await listRefunds({
       paymentIntentId: paymentIntentId || undefined,
       chargeId: chargeId || undefined,
@@ -39,6 +47,13 @@ export async function GET(request: NextRequest) {
     }, 'Refunds retrieved successfully')
 
   } catch (error) {
+    // If Stripe auth fails, return empty list with a warning instead of 400
+    if (error && typeof error === 'object' && 'type' in error && (error as any).type === 'StripeAuthenticationError') {
+      return successResponse({
+        refunds: [],
+        warning: 'Stripe authentication failed. Check your STRIPE_SECRET_KEY.'
+      }, 'Refunds retrieved successfully')
+    }
     return handleApiError(error)
   }
 }

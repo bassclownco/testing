@@ -5,26 +5,31 @@ import { eq, desc, asc, and, or, like, count } from 'drizzle-orm'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { successResponse, errorResponse, validationErrorResponse, handleApiError } from '@/lib/api-response'
 
+// Helper: treat empty strings as undefined so optional URL fields don't fail validation
+const emptyToUndefined = z.literal('').transform(() => undefined);
+const optionalUrl = z.union([emptyToUndefined, z.string().url()]).optional();
+const optionalString = (max: number) => z.union([emptyToUndefined, z.string().max(max)]).optional();
+
 const createBlogPostSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(255, 'Title is too long'),
   slug: z.string().min(3, 'Slug must be at least 3 characters').max(255, 'Slug is too long')
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase alphanumeric with hyphens'),
-  excerpt: z.string().max(500, 'Excerpt is too long').optional(),
+  excerpt: optionalString(500),
   content: z.string().min(10, 'Content must be at least 10 characters'),
-  featuredImage: z.string().url('Invalid featured image URL').optional(),
+  featuredImage: optionalUrl,
   images: z.array(z.string().url('Invalid image URL')).optional(),
   videos: z.array(z.object({
     url: z.string().url('Invalid video URL'),
-    title: z.string().optional(),
-    thumbnail: z.string().url('Invalid thumbnail URL').optional()
+    title: z.union([emptyToUndefined, z.string()]).optional(),
+    thumbnail: z.union([emptyToUndefined, z.string().url()]).optional()
   })).optional(),
-  category: z.string().max(100, 'Category is too long').optional(),
+  category: optionalString(100),
   tags: z.array(z.string()).optional(),
   published: z.boolean().default(false),
-  publishedAt: z.string().datetime('Invalid published date').optional(),
+  publishedAt: z.string().datetime('Invalid published date').optional().nullable(),
   featured: z.boolean().default(false),
-  seoTitle: z.string().max(255, 'SEO title is too long').optional(),
-  seoDescription: z.string().max(500, 'SEO description is too long').optional(),
+  seoTitle: optionalString(255),
+  seoDescription: optionalString(500),
   metaKeywords: z.array(z.string()).optional()
 })
 

@@ -127,7 +127,7 @@ export default function BlogManagementPage() {
     setFormData(prev => ({
       ...prev,
       title,
-      slug: prev.slug || generateSlug(title)
+      slug: generateSlug(title)
     }));
   };
 
@@ -346,26 +346,21 @@ export default function BlogManagementPage() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="slug">Slug (URL) *</Label>
-                  <Input
-                    id="slug"
-                    value={formData.slug}
-                    onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
-                    required
-                    pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  required
+                  placeholder="Enter your blog post title"
+                />
+                {formData.slug && (
+                  <p className="text-xs text-gray-500">
+                    URL: /blog/<span className="font-medium">{formData.slug}</span>
+                  </p>
+                )}
+                <input type="hidden" name="slug" value={formData.slug} />
               </div>
 
               <div className="space-y-2">

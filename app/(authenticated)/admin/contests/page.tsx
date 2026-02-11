@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Users, Trophy, Calendar, DollarSign, ExternalLink, Trash2 } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Users, Trophy, Calendar, DollarSign, ExternalLink, Trash2, CheckCircle, PauseCircle, XCircle } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -100,6 +100,33 @@ export default function AdminContestsPage() {
       case 'completed': return 'outline';
       case 'draft': return 'destructive';
       default: return 'secondary';
+    }
+  };
+
+  const handleStatusChange = async (id: string, title: string, newStatus: string) => {
+    const statusLabels: Record<string, string> = {
+      open: 'Publish (Open)',
+      draft: 'Unpublish (Draft)',
+      closed: 'Close',
+      judging: 'Move to Judging',
+      completed: 'Mark Completed'
+    };
+    try {
+      const response = await fetch(`/api/contests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        alert(result.message || `Failed to update status`);
+        return;
+      }
+      fetchContests();
+    } catch (error) {
+      console.error('Error updating contest status:', error);
+      alert('Failed to update contest status');
     }
   };
 
@@ -315,6 +342,33 @@ export default function AdminContestsPage() {
                               Edit Contest
                             </Link>
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                          {contest.status !== 'open' && (
+                            <DropdownMenuItem
+                              className="text-green-600 focus:text-green-600"
+                              onClick={() => handleStatusChange(contest.id, contest.title, 'open')}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Publish (Open)
+                            </DropdownMenuItem>
+                          )}
+                          {contest.status !== 'draft' && (
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(contest.id, contest.title, 'draft')}
+                            >
+                              <PauseCircle className="h-4 w-4 mr-2" />
+                              Unpublish (Draft)
+                            </DropdownMenuItem>
+                          )}
+                          {contest.status !== 'closed' && contest.status !== 'draft' && (
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(contest.id, contest.title, 'closed')}
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Close Contest
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem asChild>
                             <Link href={`/admin/contests/${contest.id}/submissions`}>
