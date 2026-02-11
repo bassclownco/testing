@@ -450,12 +450,35 @@ export default function BackupsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
-                          // Download backup file
-                          toast({
-                            title: "Download",
-                            description: "Backup download functionality would be implemented here",
-                          });
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/backups/${backup.id}/download`, {
+                              credentials: 'include'
+                            });
+                            if (res.ok) {
+                              const blob = await res.blob();
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `backup-${backup.id}.sql`;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                              URL.revokeObjectURL(url);
+                            } else {
+                              toast({
+                                title: "Download Failed",
+                                description: "Could not download backup file. The backup may not be available.",
+                                variant: "destructive"
+                              });
+                            }
+                          } catch {
+                            toast({
+                              title: "Download Failed",
+                              description: "An error occurred while downloading the backup.",
+                              variant: "destructive"
+                            });
+                          }
                         }}
                       >
                         <Download className="h-4 w-4" />

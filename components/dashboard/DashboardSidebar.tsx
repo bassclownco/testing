@@ -31,7 +31,7 @@ interface DashboardSidebarProps {
 
 const getNavigationItems = (userRole: string | undefined) => {
   const isBrandUser = userRole === 'brand-admin' || userRole === 'brand';
-  const isAdmin = userRole === 'bass-admin';
+  const isAdmin = userRole === 'bass-clown-admin';
 
   if (isBrandUser) {
     return [

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Users, Trophy, Calendar, DollarSign, ExternalLink } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Users, Trophy, Calendar, DollarSign, ExternalLink, Trash2 } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -100,6 +100,25 @@ export default function AdminContestsPage() {
       case 'completed': return 'outline';
       case 'draft': return 'destructive';
       default: return 'secondary';
+    }
+  };
+
+  const handleDeleteContest = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/contests/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        alert(result.message || 'Failed to delete contest');
+        return;
+      }
+      fetchContests();
+    } catch (error) {
+      console.error('Error deleting contest:', error);
+      alert('Failed to delete contest');
     }
   };
 
@@ -312,6 +331,14 @@ export default function AdminContestsPage() {
                               <ExternalLink className="h-4 w-4 mr-2" />
                               Preview on Frontend
                             </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600"
+                            onClick={() => handleDeleteContest(contest.id, contest.title)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Contest
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

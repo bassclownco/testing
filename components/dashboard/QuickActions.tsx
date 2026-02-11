@@ -2,13 +2,47 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Gift, Edit, MessageCircle } from 'lucide-react';
+import { Trophy, Gift, Edit, MessageCircle, Users, FileText, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 export const QuickActions = () => {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'bass-clown-admin';
 
-  const actions = [
+  const adminActions = [
+    {
+      title: 'Manage Contests',
+      description: 'Create and manage content contests',
+      icon: Trophy,
+      color: 'bg-blue-600 hover:bg-blue-700',
+      href: '/admin/contests'
+    },
+    {
+      title: 'Manage Giveaways',
+      description: 'Create and manage giveaways',
+      icon: Gift,
+      color: 'bg-green-600 hover:bg-green-700',
+      href: '/admin/giveaways'
+    },
+    {
+      title: 'Manage Blog',
+      description: 'Create and publish blog posts',
+      icon: FileText,
+      color: 'bg-purple-600 hover:bg-purple-700',
+      href: '/admin/blog'
+    },
+    {
+      title: 'Manage Users',
+      description: 'View and manage all users',
+      icon: Users,
+      color: 'bg-orange-600 hover:bg-orange-700',
+      href: '/admin/users'
+    }
+  ];
+
+  const userActions = [
     {
       title: 'Browse Contests',
       description: 'View and apply to content contests',
@@ -38,6 +72,8 @@ export const QuickActions = () => {
       href: '/contact'
     }
   ];
+
+  const actions = isAdmin ? adminActions : userActions;
 
   return (
     <Card className="bg-[#2D2D2D] border-gray-700">

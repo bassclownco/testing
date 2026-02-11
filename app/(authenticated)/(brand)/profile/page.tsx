@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Building, 
   Mail, 
@@ -26,41 +27,50 @@ import {
   Users,
   Trophy,
   BarChart3,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 
-// Mock brand data
-const mockBrandData = {
-  id: '1',
-  name: 'Bass Clown Co',
-  logo: '/images/bass-clown-co-logo-cream.svg',
-  description: 'We create engaging video content and contests for the fishing community. From cinematic commercials to social media campaigns, we help brands connect with outdoor enthusiasts.',
-  website: 'https://bassclownco.com',
-  email: 'hello@bassclownco.com',
-  phone: '+1 (555) 123-4567',
-  address: '123 Fishing Lane, Lake City, LC 12345',
-  industry: 'Media & Entertainment',
-  companySize: '10-50 employees',
-  establishedYear: '2018',
+interface BrandData {
+  name: string;
+  logo: string;
+  description: string;
+  website: string;
+  email: string;
+  phone: string;
+  address: string;
+  industry: string;
+  companySize: string;
+  establishedYear: string;
   socialMedia: {
-    instagram: '@bassclownco',
-    youtube: 'Bass Clown Co',
-    facebook: 'Bass Clown Co',
-    twitter: '@bassclownco'
-  },
-  specialties: [
-    'Video Production',
-    'Content Creation',
-    'Social Media Marketing',
-    'Contest Management',
-    'Brand Strategy'
-  ],
-  stats: {
-    totalContests: 24,
-    totalParticipants: 1247,
-    averageRating: 4.8,
-    completionRate: 92
-  },
+    instagram: string;
+    youtube: string;
+    facebook: string;
+    twitter: string;
+  };
+  specialties: string[];
+  preferences: {
+    emailNotifications: boolean;
+    smsNotifications: boolean;
+    contestUpdates: boolean;
+    marketingEmails: boolean;
+    publicProfile: boolean;
+  };
+}
+
+const defaultBrandData: BrandData = {
+  name: '',
+  logo: '/images/bass-clown-co-logo-cream.svg',
+  description: '',
+  website: '',
+  email: '',
+  phone: '',
+  address: '',
+  industry: 'Media & Entertainment',
+  companySize: '1-10 employees',
+  establishedYear: '',
+  socialMedia: { instagram: '', youtube: '', facebook: '', twitter: '' },
+  specialties: [],
   preferences: {
     emailNotifications: true,
     smsNotifications: false,
@@ -71,9 +81,47 @@ const mockBrandData = {
 };
 
 export default function BrandProfilePage() {
-  const [brandData, setBrandData] = useState(mockBrandData);
+  const [brandData, setBrandData] = useState<BrandData>(defaultBrandData);
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/users/profile', { credentials: 'include' });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          const profile = result.data;
+          setBrandData(prev => ({
+            ...prev,
+            name: profile.name || profile.companyName || '',
+            email: profile.email || '',
+            phone: profile.phone || '',
+            website: profile.website || '',
+            description: profile.bio || profile.description || '',
+            address: profile.address || '',
+            industry: profile.industry || 'Media & Entertainment',
+            companySize: profile.companySize || '1-10 employees',
+            establishedYear: profile.establishedYear || '',
+            socialMedia: profile.socialMedia || prev.socialMedia,
+            specialties: profile.specialties || prev.specialties,
+            preferences: profile.preferences || prev.preferences,
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string | boolean | string[]) => {
     setBrandData(prev => ({
@@ -102,10 +150,37 @@ export default function BrandProfilePage() {
     }));
   };
 
-  const handleSave = () => {
-    // Here you would save the brand data to your backend
-    console.log('Saving brand data:', brandData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const response = await fetch('/api/users/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: brandData.name,
+          bio: brandData.description,
+          phone: brandData.phone,
+          website: brandData.website,
+          socialMedia: brandData.socialMedia,
+          specialties: brandData.specialties,
+          preferences: brandData.preferences,
+        })
+      });
+
+      if (response.ok) {
+        setIsEditing(false);
+        alert('Profile saved successfully!');
+      } else {
+        const result = await response.json();
+        alert(result.message || 'Failed to save profile');
+      }
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addSpecialty = () => {
@@ -125,6 +200,18 @@ export default function BrandProfilePage() {
     }));
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
@@ -137,12 +224,15 @@ export default function BrandProfilePage() {
           <div className="flex gap-2">
             {isEditing ? (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                <Button variant="outline" onClick={() => setIsEditing(false)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave}>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Changes
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+                  ) : (
+                    <><Save className="w-4 h-4 mr-2" />Save Changes</>
+                  )}
                 </Button>
               </>
             ) : (
@@ -161,35 +251,12 @@ export default function BrandProfilePage() {
               <div className="relative">
                 <Avatar className="w-20 h-20">
                   <AvatarImage src={brandData.logo} alt={brandData.name} />
-                  <AvatarFallback>{brandData.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{brandData.name.charAt(0) || 'B'}</AvatarFallback>
                 </Avatar>
-                {isEditing && (
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full p-0"
-                  >
-                    <Camera className="w-4 h-4" />
-                  </Button>
-                )}
               </div>
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900">{brandData.name}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{brandData.name || 'Your Brand'}</h2>
                 <p className="text-gray-600 mt-1">{brandData.industry}</p>
-                <div className="flex items-center gap-4 mt-3">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                    <span className="text-sm font-medium">{brandData.stats.averageRating}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Trophy className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm">{brandData.stats.totalContests} contests</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4 text-green-600" />
-                    <span className="text-sm">{brandData.stats.totalParticipants} participants</span>
-                  </div>
-                </div>
               </div>
             </div>
           </CardContent>
@@ -301,6 +368,9 @@ export default function BrandProfilePage() {
                       )}
                     </Badge>
                   ))}
+                  {brandData.specialties.length === 0 && (
+                    <p className="text-sm text-gray-500">No specialties added yet</p>
+                  )}
                 </div>
                 {isEditing && (
                   <Button variant="outline" size="sm" onClick={addSpecialty}>
@@ -328,10 +398,11 @@ export default function BrandProfilePage() {
                         id="email"
                         type="email"
                         value={brandData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        disabled={!isEditing}
+                        disabled
+                        className="opacity-60"
                       />
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">Email is managed through account settings</p>
                   </div>
                   <div>
                     <Label htmlFor="phone">Phone Number</Label>
@@ -451,18 +522,6 @@ export default function BrandProfilePage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="sms-notifications">SMS Notifications</Label>
-                      <p className="text-sm text-gray-500">Receive updates via SMS</p>
-                    </div>
-                    <Switch
-                      id="sms-notifications"
-                      checked={brandData.preferences.smsNotifications}
-                      onCheckedChange={(checked) => handlePreferencesChange('smsNotifications', checked)}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
                       <Label htmlFor="contest-updates">Contest Updates</Label>
                       <p className="text-sm text-gray-500">Get notified about contest activity</p>
                     </div>
@@ -475,37 +534,16 @@ export default function BrandProfilePage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="marketing-emails">Marketing Emails</Label>
-                      <p className="text-sm text-gray-500">Receive promotional content</p>
+                      <Label htmlFor="public-profile-pref">Public Profile</Label>
+                      <p className="text-sm text-gray-500">Make your brand profile visible to the public</p>
                     </div>
                     <Switch
-                      id="marketing-emails"
-                      checked={brandData.preferences.marketingEmails}
-                      onCheckedChange={(checked) => handlePreferencesChange('marketingEmails', checked)}
+                      id="public-profile-pref"
+                      checked={brandData.preferences.publicProfile}
+                      onCheckedChange={(checked) => handlePreferencesChange('publicProfile', checked)}
                       disabled={!isEditing}
                     />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Privacy Settings</CardTitle>
-                <CardDescription>Control your brand&apos;s visibility</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="public-profile">Public Profile</Label>
-                    <p className="text-sm text-gray-500">Make your brand profile visible to the public</p>
-                  </div>
-                  <Switch
-                    id="public-profile"
-                    checked={brandData.preferences.publicProfile}
-                    onCheckedChange={(checked) => handlePreferencesChange('publicProfile', checked)}
-                    disabled={!isEditing}
-                  />
                 </div>
               </CardContent>
             </Card>
@@ -514,4 +552,4 @@ export default function BrandProfilePage() {
       </div>
     </div>
   );
-} 
+}

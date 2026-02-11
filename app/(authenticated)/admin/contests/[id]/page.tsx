@@ -600,6 +600,23 @@ export default function AdminContestDetailPage() {
                 onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
               />
             </div>
+            <div>
+              <Label>Short Description</Label>
+              <Textarea
+                value={editForm.shortDescription || ''}
+                onChange={(e) => setEditForm({ ...editForm, shortDescription: e.target.value })}
+                rows={2}
+                placeholder="Brief one-line description for listings"
+              />
+            </div>
+            <div>
+              <Label>Contest Image URL</Label>
+              <Input
+                value={editForm.image || ''}
+                onChange={(e) => setEditForm({ ...editForm, image: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Start Date</Label>
@@ -630,6 +647,36 @@ export default function AdminContestDetailPage() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Application Deadline</Label>
+                <Input
+                  type="datetime-local"
+                  value={
+                    editForm.applicationDeadline
+                      ? new Date(editForm.applicationDeadline).toISOString().slice(0, 16)
+                      : ''
+                  }
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, applicationDeadline: new Date(e.target.value).toISOString() })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Submission Deadline</Label>
+                <Input
+                  type="datetime-local"
+                  value={
+                    editForm.submissionDeadline
+                      ? new Date(editForm.submissionDeadline).toISOString().slice(0, 16)
+                      : ''
+                  }
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, submissionDeadline: new Date(e.target.value).toISOString() })
+                  }
+                />
+              </div>
+            </div>
             <div>
               <Label>Max Participants (leave empty for no cap)</Label>
               <Input
@@ -641,6 +688,24 @@ export default function AdminContestDetailPage() {
                     maxParticipants: e.target.value ? parseInt(e.target.value, 10) : null,
                   })
                 }
+              />
+            </div>
+            <div>
+              <Label>Rules</Label>
+              <Textarea
+                value={editForm.rules || ''}
+                onChange={(e) => setEditForm({ ...editForm, rules: e.target.value })}
+                rows={4}
+                placeholder="Contest rules and requirements..."
+              />
+            </div>
+            <div>
+              <Label>Submission Guidelines</Label>
+              <Textarea
+                value={editForm.submissionGuidelines || ''}
+                onChange={(e) => setEditForm({ ...editForm, submissionGuidelines: e.target.value })}
+                rows={4}
+                placeholder="Guidelines for content submissions..."
               />
             </div>
             <div>

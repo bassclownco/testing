@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Gift, Users, Calendar, DollarSign, Loader2 } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Eye, Edit, Gift, Users, Calendar, DollarSign, Loader2, Trash2 } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -103,6 +103,25 @@ export default function GiveawaysPage() {
       case 'completed': return 'outline';
       case 'draft': return 'destructive';
       default: return 'secondary';
+    }
+  };
+
+  const handleDeleteGiveaway = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/giveaways/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        alert(result.message || 'Failed to delete giveaway');
+        return;
+      }
+      fetchGiveaways();
+    } catch (error) {
+      console.error('Error deleting giveaway:', error);
+      alert('Failed to delete giveaway');
     }
   };
 
@@ -294,6 +313,14 @@ export default function GiveawaysPage() {
                               </Link>
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600"
+                            onClick={() => handleDeleteGiveaway(giveaway.id, giveaway.title)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Giveaway
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
