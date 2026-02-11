@@ -23,8 +23,8 @@ const updateContestSchema = z.object({
   submissionDeadline: z.union([emptyToUndefined, z.string().datetime()]).optional().nullable(),
   status: z.enum(['draft', 'open', 'closed', 'judging', 'completed']).optional(),
   category: z.union([emptyToUndefined, z.string().max(100)]).optional(),
-  requirements: z.union([z.array(z.string()), z.string()]).optional(),
-  judges: z.union([z.array(z.string()), z.string()]).optional(),
+  requirements: z.any().optional(),
+  judges: z.any().optional(),
   maxParticipants: z.union([z.number().int().positive(), z.string(), z.null()]).optional(),
   rules: z.union([emptyToUndefined, z.string()]).optional(),
   submissionGuidelines: z.union([emptyToUndefined, z.string()]).optional()
@@ -144,11 +144,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Normalize types: requirements/judges may arrive as JSON strings
     let processedUpdateData: any = { ...updateData }
     
-    if (typeof processedUpdateData.requirements === 'string') {
-      try { processedUpdateData.requirements = JSON.parse(processedUpdateData.requirements); } catch { delete processedUpdateData.requirements; }
+    // Normalize requirements: must be an array of strings
+    if (processedUpdateData.requirements !== undefined) {
+      if (Array.isArray(processedUpdateData.requirements)) {
+        // already an array — keep it
+      } else if (typeof processedUpdateData.requirements === 'string') {
+        try { processedUpdateData.requirements = JSON.parse(processedUpdateData.requirements); } catch { processedUpdateData.requirements = []; }
+      } else {
+        // object, null, or anything else → empty array
+        processedUpdateData.requirements = [];
+      }
     }
-    if (typeof processedUpdateData.judges === 'string') {
-      try { processedUpdateData.judges = JSON.parse(processedUpdateData.judges); } catch { delete processedUpdateData.judges; }
+    // Normalize judges: must be an array of strings
+    if (processedUpdateData.judges !== undefined) {
+      if (Array.isArray(processedUpdateData.judges)) {
+        // already an array — keep it
+      } else if (typeof processedUpdateData.judges === 'string') {
+        try { processedUpdateData.judges = JSON.parse(processedUpdateData.judges); } catch { processedUpdateData.judges = []; }
+      } else {
+        processedUpdateData.judges = [];
+      }
     }
     if (processedUpdateData.maxParticipants !== undefined) {
       const n = Number(processedUpdateData.maxParticipants);

@@ -198,8 +198,14 @@ export default function AdminContestDetailPage() {
         'rules', 'submissionGuidelines'
       ];
       for (const key of allowedFields) {
-        if ((editForm as any)[key] !== undefined && (editForm as any)[key] !== null) {
-          payload[key] = (editForm as any)[key];
+        const val = (editForm as any)[key];
+        if (val !== undefined && val !== null) {
+          // Normalize requirements/judges: ensure they're arrays, not objects
+          if ((key === 'requirements' || key === 'judges') && !Array.isArray(val)) {
+            payload[key] = typeof val === 'string' ? [val] : [];
+          } else {
+            payload[key] = val;
+          }
         }
       }
       if (payload.startDate) payload.startDate = new Date(payload.startDate as string).toISOString();
