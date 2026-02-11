@@ -14,7 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Search, CheckCircle, XCircle, Eye, FileText, AlertCircle, Calendar } from 'lucide-react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useRouter } from 'next/navigation';
 
 interface W9Form {
@@ -160,7 +159,7 @@ export default function AdminW9FormsPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
+      <>
         <div className="space-y-6">
           <div>
             <Skeleton className="h-8 w-64 mb-2" />
@@ -181,13 +180,13 @@ export default function AdminW9FormsPage() {
             </CardContent>
           </Card>
         </div>
-      </AdminLayout>
+      </>
     );
   }
 
   if (error && forms.length === 0) {
     return (
-      <AdminLayout>
+      <>
         <div className="space-y-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -199,12 +198,12 @@ export default function AdminW9FormsPage() {
             Retry
           </Button>
         </div>
-      </AdminLayout>
+      </>
     );
   }
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -435,7 +434,7 @@ export default function AdminW9FormsPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </AdminLayout>
+    </>
   );
 }
 

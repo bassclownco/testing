@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   Database, 
   Play, 
@@ -161,27 +160,24 @@ export default function MigrationsPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <Skeleton className="h-8 w-64" />
-          <Card>
-            <CardContent className="p-6">
-              <Skeleton className="h-64 w-full" />
-            </CardContent>
-          </Card>
-        </div>
-      </AdminLayout>
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <Card>
+          <CardContent className="p-6">
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Database Migrations</h1>
-            <p className="text-gray-600 mt-1">Manage database schema migrations</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Database Migrations</h1>
+          <p className="text-gray-600 mt-1">Manage database schema migrations</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -401,7 +397,6 @@ export default function MigrationsPage() {
           </Card>
         )}
       </div>
-    </AdminLayout>
   );
 }
 

@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Bell, AlertCircle, CheckCircle, XCircle, CheckCheck, Filter, Clock, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -171,7 +170,7 @@ export default function AdminNotificationsPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
+      <>
         <div className="space-y-6">
           <div>
             <Skeleton className="h-8 w-64 mb-2" />
@@ -192,13 +191,13 @@ export default function AdminNotificationsPage() {
             </CardContent>
           </Card>
         </div>
-      </AdminLayout>
+      </>
     );
   }
 
   if (error && notifications.length === 0) {
     return (
-      <AdminLayout>
+      <>
         <div className="space-y-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -210,12 +209,12 @@ export default function AdminNotificationsPage() {
             Retry
           </Button>
         </div>
-      </AdminLayout>
+      </>
     );
   }
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -365,7 +364,7 @@ export default function AdminNotificationsPage() {
           </CardContent>
         </Card>
       </div>
-    </AdminLayout>
+    </>
   );
 }
 

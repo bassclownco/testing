@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   ArrowLeft, 
   Users, 
@@ -217,7 +216,7 @@ export default function CollaborativeJudgingPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
+      <>
         <div className="space-y-6">
           <Skeleton className="h-8 w-64" />
           <Card>
@@ -226,12 +225,12 @@ export default function CollaborativeJudgingPage() {
             </CardContent>
           </Card>
         </div>
-      </AdminLayout>
+      </>
     );
   }
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -564,7 +563,7 @@ export default function CollaborativeJudgingPage() {
           </Dialog>
         )}
       </div>
-    </AdminLayout>
+    </>
   );
 }
 

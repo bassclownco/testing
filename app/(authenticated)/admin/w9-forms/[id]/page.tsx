@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   ArrowLeft, 
   CheckCircle, 
@@ -213,7 +212,7 @@ export default function W9FormDetailPage() {
 
   if (loading) {
     return (
-      <AdminLayout>
+      <>
         <div className="space-y-6">
           <Skeleton className="h-8 w-64" />
           <Card>
@@ -222,13 +221,13 @@ export default function W9FormDetailPage() {
             </CardContent>
           </Card>
         </div>
-      </AdminLayout>
+      </>
     );
   }
 
   if (error && !form) {
     return (
-      <AdminLayout>
+      <>
         <div className="space-y-6">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -236,20 +235,20 @@ export default function W9FormDetailPage() {
           </Alert>
           <Button onClick={fetchFormDetails}>Retry</Button>
         </div>
-      </AdminLayout>
+      </>
     );
   }
 
   if (!form) {
     return (
-      <AdminLayout>
+      <>
         <div className="space-y-6">
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>W9 form not found</AlertDescription>
           </Alert>
         </div>
-      </AdminLayout>
+      </>
     );
   }
 
@@ -262,7 +261,7 @@ export default function W9FormDetailPage() {
   } as const;
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -570,7 +569,7 @@ export default function W9FormDetailPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </AdminLayout>
+    </>
   );
 }
 
