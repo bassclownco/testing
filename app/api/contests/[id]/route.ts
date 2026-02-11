@@ -117,8 +117,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const user = await requireAdmin(request)
     const body = await request.json()
 
-    // Validate input
-    const validation = updateContestSchema.safeParse(body)
+    // Strip unknown keys then validate — prevents 422 from extra fields like stats, creatorName, etc.
+    const validation = updateContestSchema.strip().safeParse(body)
     if (!validation.success) {
       const errors = validation.error.flatten().fieldErrors
       return validationErrorResponse(errors)

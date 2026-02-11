@@ -189,13 +189,34 @@ export default function AdminContestDetailPage() {
     if (!contest) return;
     try {
       setSaving(true);
-      const payload: Record<string, unknown> = { ...editForm };
-      if (editForm.startDate) payload.startDate = new Date(editForm.startDate).toISOString();
-      if (editForm.endDate) payload.endDate = new Date(editForm.endDate).toISOString();
-      if (editForm.applicationDeadline)
-        payload.applicationDeadline = new Date(editForm.applicationDeadline).toISOString();
-      if (editForm.submissionDeadline)
-        payload.submissionDeadline = new Date(editForm.submissionDeadline).toISOString();
+      // Only send fields the API schema accepts — strip computed/read-only fields
+      const payload: Record<string, unknown> = {};
+      const allowedFields = [
+        'title', 'description', 'shortDescription', 'image', 'brandLogo', 'brandName',
+        'prize', 'startDate', 'endDate', 'applicationDeadline', 'submissionDeadline',
+        'status', 'category', 'requirements', 'judges', 'maxParticipants',
+        'rules', 'submissionGuidelines'
+      ];
+      for (const key of allowedFields) {
+        if ((editForm as any)[key] !== undefined && (editForm as any)[key] !== null) {
+          payload[key] = (editForm as any)[key];
+        }
+      }
+      if (payload.startDate) payload.startDate = new Date(payload.startDate as string).toISOString();
+      if (payload.endDate) payload.endDate = new Date(payload.endDate as string).toISOString();
+      if (payload.applicationDeadline)
+        payload.applicationDeadline = new Date(payload.applicationDeadline as string).toISOString();
+      if (payload.submissionDeadline)
+        payload.submissionDeadline = new Date(payload.submissionDeadline as string).toISOString();
+      // maxParticipants must be a number or removed
+      if (payload.maxParticipants !== undefined) {
+        const n = Number(payload.maxParticipants);
+        if (isNaN(n) || n <= 0) {
+          delete payload.maxParticipants;
+        } else {
+          payload.maxParticipants = n;
+        }
+      }
       const response = await fetch(`/api/contests/${contestId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

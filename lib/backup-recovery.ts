@@ -104,10 +104,18 @@ export class BackupRecoveryService {
 
   constructor() {
     this.migrationService = new DatabaseMigrationService();
-    // Use /tmp on serverless (Vercel), local backups dir otherwise
-    this.backupDir = process.env.VERCEL ? '/tmp/backups' : path.join(process.cwd(), 'backups');
+    // Use /tmp on serverless environments (Vercel, AWS Lambda)
+    // Check multiple indicators since VERCEL env var may not always be set
+    const isServerless = !!(
+      process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.VERCEL_ENV ||
+      process.cwd().startsWith('/var/task')
+    );
+    this.backupDir = isServerless ? '/tmp/backups' : path.join(process.cwd(), 'backups');
     this.config = this.getDefaultConfig();
-    this.ensureBackupDirectory();
+    // Don't call ensureBackupDirectory in constructor — it's async and
+    // constructors can't await. We'll ensure it lazily before each operation.
   }
 
   // Get default backup configuration
@@ -140,6 +148,7 @@ export class BackupRecoveryService {
     description?: string,
     compressionEnabled: boolean = true
   ): Promise<BackupMetadata> {
+    await this.ensureBackupDirectory();
     const backupId = `backup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const startTime = new Date();
     
@@ -204,11 +213,12 @@ export class BackupRecoveryService {
     }
   }
 
-  // Create incremental backup
+  // Create incremental backup (ensures backup dir exists)
   async createIncrementalBackup(
     lastBackupTime: Date,
     description?: string
   ): Promise<BackupMetadata> {
+    await this.ensureBackupDirectory();
     const backupId = `incremental_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const startTime = new Date();
     
@@ -446,6 +456,7 @@ export class BackupRecoveryService {
 
   // Store backup metadata
   private async storeBackupMetadata(metadata: BackupMetadata): Promise<void> {
+    await this.ensureBackupDirectory();
     const metadataPath = path.join(this.backupDir, `${metadata.id}.json`);
     await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
   }
@@ -471,6 +482,7 @@ export class BackupRecoveryService {
     limit: number = 50
   ): Promise<BackupMetadata[]> {
     try {
+      await this.ensureBackupDirectory();
       const files = await fs.readdir(this.backupDir);
       const metadataFiles = files.filter(f => f.endsWith('.json'));
       
@@ -816,6 +828,7 @@ export class BackupRecoveryService {
     this.config = { ...this.config, ...config };
     
     // Save configuration to file
+    await this.ensureBackupDirectory();
     const configPath = path.join(this.backupDir, 'backup_config.json');
     await fs.writeFile(configPath, JSON.stringify(this.config, null, 2));
   }
