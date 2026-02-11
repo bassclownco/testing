@@ -104,7 +104,8 @@ export class BackupRecoveryService {
 
   constructor() {
     this.migrationService = new DatabaseMigrationService();
-    this.backupDir = path.join(process.cwd(), 'backups');
+    // Use /tmp on serverless (Vercel), local backups dir otherwise
+    this.backupDir = process.env.VERCEL ? '/tmp/backups' : path.join(process.cwd(), 'backups');
     this.config = this.getDefaultConfig();
     this.ensureBackupDirectory();
   }
