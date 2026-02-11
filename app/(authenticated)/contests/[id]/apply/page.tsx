@@ -8,42 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import ContestApplicationForm from '@/components/contests/ContestApplicationForm';
-import { ArrowLeft, AlertTriangle, CheckCircle, Clock, Trophy, Calendar } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, CheckCircle, Clock, Trophy, Calendar, Crown } from 'lucide-react';
 import Link from 'next/link';
-
-// Mock contest data
-const mockContest: Contest = {
-  id: '1',
-  title: 'Best Bass Fishing Video 2024',
-  description: 'Show us your best bass fishing skills in this exciting video contest. Submit your most impressive catch, technique demonstration, or fishing adventure. Winner gets premium fishing gear and equipment worth $2,000!',
-  shortDescription: 'Submit your best bass fishing video for a chance to win premium fishing gear worth $2,000',
-  image: '/images/video-review-thumb-1.jpg',
-  prize: '$2,000 in Fishing Gear',
-  startDate: '2024-01-01',
-  endDate: '2024-03-31',
-  applicationDeadline: '2024-02-15',
-  submissionDeadline: '2024-03-15',
-  status: 'open',
-  category: 'Video Production',
-  requirements: [
-    'Original video content only',
-    'Minimum 2 minutes, maximum 10 minutes',
-    'High definition (1080p or higher)',
-    'Include brief description of technique or location',
-    'Must demonstrate bass fishing skills',
-    'No copyrighted music without permission',
-    'Shot within the contest period'
-  ],
-  judges: ['John Fisher', 'Sarah Bass', 'Mike Angler'],
-  maxParticipants: 100,
-  currentParticipants: 45,
-  rules: 'All content must be original and shot within the contest period. No copyrighted music without permission. Submissions will be judged on technique, creativity, and video quality.',
-  submissionGuidelines: 'Upload your video in MP4 format, maximum 500MB. Include title, description, and location if applicable. Ensure video quality is HD (1080p minimum).',
-  createdBy: 'Bass Clown Co',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z'
-};
 
 export default function ContestApplicationPage() {
   const params = useParams();
@@ -52,86 +20,186 @@ export default function ContestApplicationPage() {
   const [contest, setContest] = useState<Contest | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasExistingApplication, setHasExistingApplication] = useState(false);
+  const [membershipRequired, setMembershipRequired] = useState(false);
+  const [membershipMessage, setMembershipMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchContest = async () => {
-      setLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        setContest(mockContest);
-        // Check if user has already applied (mock check)
-        setHasExistingApplication(false);
-        setLoading(false);
-      }, 500);
-    };
+    if (params?.id) {
+      fetchContestAndStatus();
+    }
+  }, [params?.id]);
 
-    fetchContest();
-  }, [params.id]);
+  const fetchContestAndStatus = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch contest details
+      const contestRes = await fetch(`/api/contests/${params.id}`, { credentials: 'include' });
+      if (!contestRes.ok) throw new Error('Contest not found');
+      const contestResult = await contestRes.json();
+
+      if (contestResult.success && contestResult.data) {
+        const c = contestResult.data;
+        setContest({
+          id: c.id,
+          title: c.title,
+          description: c.description || '',
+          shortDescription: c.shortDescription || '',
+          image: c.image || '/images/assets/bass-clown-co-fish-chase.png',
+          prize: c.prize || 'Prize TBD',
+          startDate: c.startDate || '',
+          endDate: c.endDate || '',
+          applicationDeadline: c.applicationDeadline || '',
+          submissionDeadline: c.submissionDeadline || '',
+          status: c.status || 'open',
+          category: c.category || 'General',
+          requirements: Array.isArray(c.requirements) ? c.requirements : [],
+          judges: Array.isArray(c.judges) ? c.judges : [],
+          maxParticipants: c.maxParticipants || 0,
+          currentParticipants: c.currentParticipants || 0,
+          rules: c.rules || '',
+          submissionGuidelines: c.submissionGuidelines || '',
+          createdBy: c.createdBy || '',
+          createdAt: c.createdAt || '',
+          updatedAt: c.updatedAt || '',
+        });
+      }
+
+      // Check application status + membership
+      const applyRes = await fetch(`/api/contests/${params.id}/apply`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (applyRes.ok) {
+        const applyResult = await applyRes.json();
+        if (applyResult.data) {
+          setHasExistingApplication(!!applyResult.data.hasExistingApplication);
+          setMembershipRequired(!!applyResult.data.membershipRequired);
+          setMembershipMessage(applyResult.data.membershipMessage || '');
+        }
+      } else if (applyRes.status === 403) {
+        const r = await applyRes.json();
+        setMembershipRequired(true);
+        setMembershipMessage(r.message || 'Active membership required to apply.');
+      }
+    } catch (err) {
+      console.error('Error fetching contest:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load contest');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleApplicationSubmit = async (values: ContestApplicationValues) => {
     try {
-      // Simulate API call to submit application
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // In real app, would send to backend:
-      // const response = await fetch(`/api/contests/${params.id}/applications`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ ...values, userId: user?.id })
-      // });
-      
-      console.log('Application submitted:', values);
-      
+      setSubmitting(true);
+      const response = await fetch(`/api/contests/${params.id}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.message || 'Failed to submit application');
+      }
+
       // Success is handled by the form component
-    } catch (error) {
-      console.error('Application submission failed:', error);
-      throw error;
+    } catch (err) {
+      console.error('Application submission failed:', err);
+      throw err;
+    } finally {
+      setSubmitting(false);
     }
   };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-2/3 mb-8"></div>
-          <div className="h-96 bg-gray-200 rounded"></div>
+        <Skeleton className="h-8 w-48 mb-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <Skeleton className="h-96" />
+          </div>
+          <div>
+            <Skeleton className="h-64" />
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!contest) {
+  if (error || !contest) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Contest not found. Please check the URL and try again.
+            {error || 'Contest not found. Please check the URL and try again.'}
           </AlertDescription>
         </Alert>
+        <Button asChild variant="outline" className="mt-4">
+          <Link href="/content-contests">Browse Contests</Link>
+        </Button>
       </div>
     );
   }
 
-  const applicationDeadline = new Date(contest.applicationDeadline);
-  const isDeadlinePassed = new Date() > applicationDeadline;
-  const isContestFull = contest.currentParticipants >= contest.maxParticipants;
+  const applicationDeadline = contest.applicationDeadline ? new Date(contest.applicationDeadline) : null;
+  const isDeadlinePassed = applicationDeadline ? new Date() > applicationDeadline : false;
+  const isContestFull = contest.maxParticipants > 0 && contest.currentParticipants >= contest.maxParticipants;
 
-  if (hasExistingApplication) {
+  if (membershipRequired) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Button 
-          asChild
-          variant="outline" 
-          className="mb-6"
-        >
+        <Button asChild variant="outline" className="mb-6">
           <Link href={`/contests/${contest.id}`}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Contest
           </Link>
         </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-600">
+              <Crown className="w-5 h-5" />
+              Membership Required
+            </CardTitle>
+            <CardDescription>
+              You need an active membership to apply to contests.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600 mb-4">
+              {membershipMessage || 'An active Bass Clown Co membership ($9.99/month) is required to apply to content creation contests. Become a member to unlock contest applications, giveaway entries, and more!'}
+            </p>
+            <div className="flex gap-4">
+              <Button asChild>
+                <Link href="/settings">Get Membership</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/contests/${contest.id}`}>View Contest Details</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
+  if (hasExistingApplication) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Button asChild variant="outline" className="mb-6">
+          <Link href={`/contests/${contest.id}`}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Contest
+          </Link>
+        </Button>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -144,19 +212,15 @@ export default function ContestApplicationPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 mb-4">
-              Your application for &quot;{contest.title}&quot; is currently under review. 
-              You&apos;ll receive an email notification once your application has been reviewed.
+              Your application for &quot;{contest.title}&quot; is currently under review.
+              You&apos;ll receive a notification once your application has been reviewed.
             </p>
             <div className="flex gap-4">
               <Button asChild variant="outline">
-                <Link href={`/contests/${contest.id}`}>
-                  View Contest Details
-                </Link>
+                <Link href={`/contests/${contest.id}`}>View Contest Details</Link>
               </Button>
               <Button asChild>
-                <Link href="/my-contests">
-                  View My Applications
-                </Link>
+                <Link href="/my-contests">View My Applications</Link>
               </Button>
             </div>
           </CardContent>
@@ -168,42 +232,30 @@ export default function ContestApplicationPage() {
   if (isDeadlinePassed) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Button 
-          asChild
-          variant="outline" 
-          className="mb-6"
-        >
+        <Button asChild variant="outline" className="mb-6">
           <Link href={`/contests/${contest.id}`}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Contest
           </Link>
         </Button>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" />
               Application Deadline Passed
             </CardTitle>
-            <CardDescription>
-              The application deadline for this contest has passed.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 mb-4">
-              The application deadline for &quot;{contest.title}&quot; was {applicationDeadline.toLocaleDateString()}. 
-              Unfortunately, new applications are no longer being accepted.
+              The application deadline for &quot;{contest.title}&quot; was {applicationDeadline?.toLocaleDateString()}.
+              New applications are no longer being accepted.
             </p>
             <div className="flex gap-4">
               <Button asChild variant="outline">
-                <Link href={`/contests/${contest.id}`}>
-                  View Contest Details
-                </Link>
+                <Link href={`/contests/${contest.id}`}>View Contest Details</Link>
               </Button>
               <Button asChild>
-                <Link href="/contests">
-                  Browse Other Contests
-                </Link>
+                <Link href="/content-contests">Browse Other Contests</Link>
               </Button>
             </div>
           </CardContent>
@@ -215,42 +267,29 @@ export default function ContestApplicationPage() {
   if (isContestFull) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Button 
-          asChild
-          variant="outline" 
-          className="mb-6"
-        >
+        <Button asChild variant="outline" className="mb-6">
           <Link href={`/contests/${contest.id}`}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Contest
           </Link>
         </Button>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-yellow-600">
               <AlertTriangle className="w-5 h-5" />
               Contest Full
             </CardTitle>
-            <CardDescription>
-              This contest has reached its maximum number of participants.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 mb-4">
-              &quot;{contest.title}&quot; has reached its maximum capacity of {contest.maxParticipants} participants. 
-              New applications are no longer being accepted.
+              &quot;{contest.title}&quot; has reached its maximum capacity of {contest.maxParticipants} participants.
             </p>
             <div className="flex gap-4">
               <Button asChild variant="outline">
-                <Link href={`/contests/${contest.id}`}>
-                  View Contest Details
-                </Link>
+                <Link href={`/contests/${contest.id}`}>View Contest Details</Link>
               </Button>
               <Button asChild>
-                <Link href="/contests">
-                  Browse Other Contests
-                </Link>
+                <Link href="/content-contests">Browse Other Contests</Link>
               </Button>
             </div>
           </CardContent>
@@ -261,11 +300,7 @@ export default function ContestApplicationPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Button 
-        asChild
-        variant="outline" 
-        className="mb-6"
-      >
+      <Button asChild variant="outline" className="mb-6">
         <Link href={`/contests/${contest.id}`}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Contest
@@ -273,23 +308,18 @@ export default function ContestApplicationPage() {
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Application Form */}
         <div className="lg:col-span-2">
-          <ContestApplicationForm 
+          <ContestApplicationForm
             contest={contest}
             onSubmit={handleApplicationSubmit}
           />
         </div>
 
-        {/* Sidebar with Contest Info */}
         <div className="space-y-6">
-          {/* Contest Summary */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">{contest.title}</CardTitle>
-              <CardDescription>
-                {contest.shortDescription}
-              </CardDescription>
+              <CardDescription>{contest.shortDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-2">
@@ -299,27 +329,24 @@ export default function ContestApplicationPage() {
                   <p className="font-semibold">{contest.prize}</p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-green-500" />
-                <div>
-                  <p className="text-sm text-gray-600">Application Deadline</p>
-                  <p className="font-semibold">
-                    {applicationDeadline.toLocaleDateString()}
-                  </p>
+              {applicationDeadline && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-green-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Application Deadline</p>
+                    <p className="font-semibold">{applicationDeadline.toLocaleDateString()}</p>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-orange-500" />
-                <div>
-                  <p className="text-sm text-gray-600">Submission Deadline</p>
-                  <p className="font-semibold">
-                    {new Date(contest.submissionDeadline).toLocaleDateString()}
-                  </p>
+              )}
+              {contest.submissionDeadline && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-orange-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Submission Deadline</p>
+                    <p className="font-semibold">{new Date(contest.submissionDeadline).toLocaleDateString()}</p>
+                  </div>
                 </div>
-              </div>
-
+              )}
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{contest.category}</Badge>
                 <Badge className="bg-green-500 text-white">
@@ -329,7 +356,6 @@ export default function ContestApplicationPage() {
             </CardContent>
           </Card>
 
-          {/* Application Tips */}
           <Card>
             <CardHeader>
               <CardTitle>Application Tips</CardTitle>
@@ -338,74 +364,50 @@ export default function ContestApplicationPage() {
               <ul className="space-y-2 text-sm">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Be specific about your fishing experience</span>
+                  <span>Be specific about your experience and skills</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Include links to your best work</span>
+                  <span>Include links to your best portfolio work</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Explain your motivation clearly</span>
+                  <span>Explain your creative vision clearly</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>List all relevant equipment</span>
+                  <span>List all relevant equipment you have</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Double-check all information</span>
+                  <span>Double-check all information before submitting</span>
                 </li>
               </ul>
             </CardContent>
           </Card>
 
-          {/* Review Process */}
           <Card>
             <CardHeader>
               <CardTitle>Review Process</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-2">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-semibold text-blue-600">1</span>
+                {[
+                  { step: '1', title: 'Submit Application', desc: 'Complete and submit your application form' },
+                  { step: '2', title: 'Review (2-3 days)', desc: 'Our team reviews your application' },
+                  { step: '3', title: 'Notification', desc: 'Email notification of approval/rejection' },
+                  { step: '4', title: 'Start Creating', desc: 'If approved, begin working on your submission' },
+                ].map((item) => (
+                  <div key={item.step} className="flex items-start gap-2">
+                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-semibold text-blue-600">{item.step}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{item.title}</p>
+                      <p className="text-gray-600">{item.desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">Submit Application</p>
-                    <p className="text-gray-600">Complete and submit your application form</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-2">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-semibold text-blue-600">2</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Review (2-3 days)</p>
-                    <p className="text-gray-600">Our team reviews your application</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-2">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-semibold text-blue-600">3</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Notification</p>
-                    <p className="text-gray-600">Email notification of approval/rejection</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-2">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-semibold text-blue-600">4</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">Start Creating</p>
-                    <p className="text-gray-600">If approved, begin working on your submission</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -413,4 +415,4 @@ export default function ContestApplicationPage() {
       </div>
     </div>
   );
-} 
+}

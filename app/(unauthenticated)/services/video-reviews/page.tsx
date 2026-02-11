@@ -143,7 +143,7 @@ export default function VideoReviews() {
               <NonHomePolaroidFrame imageSrc="/images/assets/bass-taking-picture.svg" imageAlt="OutcastLures Testimonial" caption="OutcastLures" rotation="3deg" />
               <h3 className="text-xl font-bold text-white my-4 uppercase">Testimonial</h3>
               <div className="text-gray-300">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.
+                Bass Clown Co. delivered exactly what we needed. Their creativity and attention to detail made our product shine. The final video was top-notch and drove real engagement from our target audience.
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ export default function VideoReviews() {
       </section>
 
       {/* Footer with YouTube Section */}
-      <section className="bg-[#4F504F] py-16 relative  relative ">
+      <section className="bg-[#4F504F] py-16 relative">
         <div className="relative flex items-center justify-center pointer-events-none">
           <Image
             src="/images/assets/bass-holding-lure.png"
